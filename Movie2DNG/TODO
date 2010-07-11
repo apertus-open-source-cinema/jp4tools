@@ -1,0 +1,19 @@
+TODO
+====
+
+* Black level. Use extra black lines/columns to extract black level/point (use MaskedPixels and Crop* appropriatedly).
+* White level
+* Color matrix
+* Analog Balance (gains)
+* Exposure (Baseline exposure)
+* HDR uses BayerGreenSplit
+* Gamma (linearization table)
+* Camera identifier (Unique, Make, SerialNumber)
+* Noise profile
+* Lens profile
+* Fix size (cropping?)
+
+* Use memory buffer: frame->jpeg->dng->zip
+* Faster deblock using vectorization
+* CinemaDNG
+

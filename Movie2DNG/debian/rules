@@ -1,0 +1,38 @@
+#!/usr/bin/make -f
+# 
+# Paulo Henrique Silva <ph.silva@gmail.com>
+# Robert Jordens <jordens@debian.org>
+#
+# This software may be used and distributed according to the terms
+# of the GNU General Public License, incorporated herein by reference.
+
+export DH_VERBOSE=1
+
+include /usr/share/cdbs/1/class/langcore.mk
+include /usr/share/cdbs/1/rules/buildcore.mk
+include /usr/share/cdbs/1/rules/utils.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+
+DEB_DH_STRIP_ARGS := --dbg-package=movie2dng
+
+DEB_SCONS_ENVVARS :=
+DEB_SCONS_INVOKE = $(DEB_SCONS_ENVVARS) scons 
+
+PREFIX = $(DEB_DESTDIR)/usr
+BUILD_FILES = SConstruct src extra
+
+common-build-arch:: debian/stamp-scons-build
+debian/stamp-scons-build:
+	mkdir -p build-generic
+	cp -alf $(BUILD_FILES) build-generic
+	cd build-generic && $(DEB_SCONS_INVOKE) 'ARCH=$(CFLAGS)' PREFIX=$(PREFIX)
+	touch $@
+
+install/movie2dng::
+	cd build-generic && $(DEB_SCONS_INVOKE) 'ARCH=$(CFLAGS)' PREFIX=$(PREFIX) install
+
+clean:: scons-clean
+scons-clean::
+	$(MAKE) -f debian/rules reverse-config
+	rm -rf build-generic
+	rm -rf $(DEB_DESTDIR) debian/stamp-scons-build

@@ -1,21 +1,74 @@
-import sys
+import os
+from os import environ as env
+from sys import platform, byteorder
 from glob import glob
 
-env = Environment()
+# command line var=value variables
+ARCH_CFLAGS = ARGUMENTS.get("ARCH", "-O3")
+PREFIX = ARGUMENTS.get("PREFIX", "/usr")
+bin_DIR = os.path.join(PREFIX, "bin")
 
-env.MergeFlags("-Wall -Wextra -O3 -ffast-math")
-
-movie2dng_LIBS = []
-
-if sys.platform == "darwin":
-   env.Prepend(CPPPATH=["/opt/local/include"])
-   env.Append(LIBPATH=["/opt/local/lib", "."])
-   env.Append(LIBS=["avformat", "avcodec"])
-   
+# system dependent variables
+if platform == "darwin":
+    env = Environment(ENV=env)
+    env.Append(CPPDEFINES=["qMacOS=1", "qWinOS=0", "MAC_ENV=1"])
+    env.Append(LINKFLAGS=["-framework", "CoreServices"])
+elif platform == "linux2":
+    env = Environment(ENV=env)
+    env.Append(CPPDEFINES=["qMacOS=0", "qWinOS=0", "UNIX_ENV=1"])
+elif platform == "win32":
+    env = Environment(ENV=env, TOOLS=['mingw'])
+    env.Append(CPPDEFINES=["qMacOS=0", "qWinOS=0", "UNIX_ENV=1"])
+    env.Append(CPPPATH=["c:\elphel\expat\Source\lib"])
+    env.Append(LIBPATH=["c:\elphel\expat\Bin"])
 else:
-   env.MergeFlags(["!pkg-config --libs --cflags libavcodec libavformat"])
+    print "Unknwon platform."
+    Exit(2)
 
-movie2dng_SRC = ["movie2dng.cpp"]
+if byteorder == "big":
+    env.Append(CPPDEFINES=["qDNGBigEndian=1"])
+else:
+    env.Append(CPPDEFINES=["qDNGLittleEndian=1"])
 
-env.Program("movie2dng", source=movie2dng_SRC)
+# system independent variables
+env.MergeFlags(ARCH_CFLAGS)
+env.Prepend(CPPPATH=["extra/jpeg-6b-jp4", "extra/dng_sdk", "extra/xmp_sdk/include", "extra/xmp_sdk/common", "extra/md5"])
+env.Append(LIBPATH=["#"])
 
+# ffmpeg (libraries are added by hand)
+env.ParseConfig("pkg-config --cflags --libs-only-L libavformat")
+env.ParseConfig("pkg-config --cflags --libs-only-L libavcodec")
+
+# DNG SDK
+dng_SRC  = glob("extra/dng_sdk/*.cpp")
+xmp_SRC  = ["extra/xmp_sdk/common/UnicodeConversions.cpp", "extra/xmp_sdk/common/XML_Node.cpp"]
+xmp_SRC += glob("extra/xmp_sdk/XMPCore/*.cpp")
+md5_SRC  = glob("extra/md5/*.cpp")
+
+env.StaticLibrary("dngsdk", source=dng_SRC+xmp_SRC+md5_SRC)
+
+# JP4 modified libjpeg
+jpeg_SRC = Split("jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c "
+                 "jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c "
+                 "jcphuff.c jcprepct.c jcsample.c jctrans.c jdapimin.c jdapistd.c "
+                 "jdatadst.c jdatasrc.c jdcoefct.c jdcolor.c jddctmgr.c jdhuff.c "
+                 "jdinput.c jdmainct.c jdmarker.c jdmaster.c jdmerge.c jdphuff.c "
+                 "jdpostct.c jdsample.c jdtrans.c jerror.c jfdctflt.c jfdctfst.c "
+                 "jfdctint.c jidctflt.c jidctfst.c jidctint.c jidctred.c jquant1.c "
+                 "jquant2.c jutils.c jmemmgr.c jmemnobs.c")
+
+jpeg_SRC = ["extra/jpeg-6b-jp4/%s" % src for src in jpeg_SRC]
+
+env.StaticLibrary("jpeg_jp4", source=jpeg_SRC)
+
+# movie2dng
+movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp", "src/jp4.cpp"]
+
+movieEnv = env.Clone()
+movieEnv.MergeFlags("-Wall -Wextra")
+movieEnv.MergeFlags(ARCH_CFLAGS)
+movie2dng = movieEnv.Program("movie2dng", source=movie2dng_SRC,
+                             LIBS=["libdngsdk", "libjpeg_jp4", "libavformat", "libavcodec", "libexpat", "libpthread"])
+
+movieEnv.Install(bin_DIR, movie2dng)
+movieEnv.Alias("install", bin_DIR)

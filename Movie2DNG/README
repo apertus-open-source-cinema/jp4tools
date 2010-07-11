@@ -1,0 +1,29 @@
+movie2dng
+=========
+
+This is a utility program to convert Elphel's JP4 movies
+to DNG and JPEG frames in standard Bayer format.
+
+Usage
+=====
+
+To use it, call movie2dng as follow:
+
+movie2dng filename.mov my-jpeg-frame-%05d.jpg my-dng-frame-%05d.dng
+
+
+Building
+=========
+
+It uses scons to he build, try writing scons on you shell and Ubuntu
+will tell you how to install if you don't have it.
+
+You'll also need ffmpeg installed, libavcodec-dev and libavformat-dev
+packages on Ubuntu do the job.
+
+just type "scons" and you'll end up with a movi2dng executable.
+
+Comments
+========
+
+Comments, corrections, please contact me at ph.silva@gmail.com
