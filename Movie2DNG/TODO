@@ -1,12 +1,13 @@
 TODO
 ====
 
-* Black level. Use extra black lines/columns to extract black level/point (use MaskedPixels and Crop* appropriatedly).
+* Fix EXIF handling, shoud copy all EXIF tags from JP4 to DNG.
+* Black level.
 * White level
-* Color matrix
+* Color matrix, currently hard wired from elphel_dng.c.
 * Analog Balance (gains)
 * Exposure (Baseline exposure)
-* HDR uses BayerGreenSplit
+* HDR may use BayerGreenSplit
 * Gamma (linearization table)
 * Camera identifier (Unique, Make, SerialNumber)
 * Noise profile
@@ -16,4 +17,3 @@ TODO
 * Use memory buffer: frame->jpeg->dng->zip
 * Faster deblock using vectorization
 * CinemaDNG
-

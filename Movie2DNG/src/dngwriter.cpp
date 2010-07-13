@@ -14,7 +14,7 @@
   GNU General Public License for more details.
   
   You should have received a copy of the GNU General Public License
-  along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+  along with movie2dng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "dng_camera_profile.h"
@@ -43,15 +43,12 @@
 #include "dngwriter.h"
 #include "jp4.h"
 
-#include <iostream>
-using std::cerr;
-
 #include <vector>
 using std::vector;
 
 void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
-  cerr << "DNGWriter: Reading RAW JP4 data\n";
+  // Reading RAW JP4 data
 
   JP4 jp4;
   jp4.open(jp4Filename);
@@ -61,7 +58,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
   unsigned char blackPoint = 0x00;
   int bayerMosaic = 0;
   
-  cerr << "DNGWriter: DNG memory allocation and initialization\n";
+  // DNG memory allocation and initialization
 
   dng_memory_allocator memalloc(gDefaultDNGMemoryAllocator);
   dng_memory_stream stream(memalloc);
@@ -79,7 +76,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
   AutoPtr<dng_image> image(new dng_simple_image(rect, 1, ttByte, memalloc));
 
-  cerr << "DNGWriter: DNG IFD structure creation\n";
+  // DNG IFD structure creation
 
   dng_ifd ifd;
 
@@ -110,7 +107,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
   ifd.ReadImage(host, stream, *image.Get());
 
-  cerr << "DNGWriter: DNG Negative structure creation\n";
+  // DNG Negative structure creation
 
   AutoPtr<dng_negative> negative(host.Make_dng_negative());
 
@@ -145,7 +142,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
   					  cameraMult[1],
   					  cameraMult[2]));
 
-  cerr << "DNGWriter: Updating metadata to DNG Negative\n";
+  // Updating metadata to DNG Negative
 
   dng_exif *exif = negative->GetExif();
   exif->fModel.Set_ASCII("Elphel 353"); // TODO: model
@@ -178,7 +175,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
   negative->SynchronizeMetadata();
   negative->RebuildIPTC(true, false);
 
-  cerr << "DNGWriter: DNG thumbnail creation\n";
+  // DNGWriter: DNG thumbnail creation
 
   dng_preview_list previewList;
 
@@ -189,7 +186,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
   thumbnail_render.SetMaximumSize(256);
   thumbnail.fImage.Reset(thumbnail_render.Render());
 
-  cerr << "DNGWriter: Creating DNG file " << dngFilename << "\n";
+  // Creating DNG file
 
   dng_image_writer writer;
   dng_file_stream filestream(dngFilename.c_str(), true);
