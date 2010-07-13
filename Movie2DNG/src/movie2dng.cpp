@@ -75,14 +75,13 @@ int main (int argc, char** argv) {
     }
   }
 
-  if (argc-optind < 2) {
+  if (argc-optind != 1) {
     help(argv[0]);
     exit(1);
-  }
+  } 
 
   const char* movieFilename = argv[optind];
   const char* frameName = argv[optind+1];
-
 
   AVFormatContext* ctx;
   char jp4FilenameFmt[255];
