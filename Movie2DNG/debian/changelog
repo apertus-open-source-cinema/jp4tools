@@ -1,3 +1,9 @@
+movie2dng (0.2) lucid; urgency=low
+
+  * Ported to Lucid. 
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Tue, 13 Jul 2010 06:05:39 -0300
+
 movie2dng (0.1) jaunty; urgency=low
 
   * Initial Release.

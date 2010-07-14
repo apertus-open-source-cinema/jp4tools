@@ -8,7 +8,7 @@ Standards-Version: 3.8.4
 Homepage: http://wiki.elphel.com/index.php?title=Movie2dng
 
 Package: movie2dng
-Architecture: any
+Architecture: i386 amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, libavcodec52,
          libavformat52, libexpat1
 Description: Convert Elphel's JP4 movies to DNG frames.
