@@ -27,7 +27,7 @@ extern "C" {
 #include <cstdio>
 #include <cstdlib>
 
-const char* MOVIE2DNG_VERSION = "0.1";
+const char* MOVIE2DNG_VERSION = "0.3";
 
 
 void help(const char* program_name) {
