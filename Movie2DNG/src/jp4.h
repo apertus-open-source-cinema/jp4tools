@@ -26,6 +26,24 @@ using std::string;
 #include <vector>
 using std::vector;
 
+typedef struct {
+  double gain[4];
+  double gamma[4];
+  double black[4];
+  int    woi_left;
+  int    woi_width;
+  int    woi_top;
+  int    woi_height;
+  bool   flip_hor;
+  bool   flip_ver;
+  int    bayer_mode;
+  int    color_mode;
+  int    decim_hor;
+  int    decim_ver;
+  int    bin_hor;
+  int    bin_ver;
+} ElphelMakerNote;
+
 class JP4 {
 
  public:
@@ -43,14 +61,19 @@ class JP4 {
 
   vector<unsigned char>& data() { return _data; }
 
+  ElphelMakerNote& makerNote() { return _makerNote; }
+
  private:
   JP4(const JP4& other); // non-conpyable
   JP4& operator=(const JP4& other); // non-assignable
+
+  void readMakerNote();
 
   string _filename;
   unsigned int _width;
   unsigned int _height;
   vector<unsigned char> _data;
+  ElphelMakerNote _makerNote;
 
 };
 

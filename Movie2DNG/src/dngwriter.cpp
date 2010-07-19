@@ -46,7 +46,7 @@
 #include <vector>
 using std::vector;
 
-void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
+void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int bayerShift) {
 
   // Reading RAW JP4 data
 
@@ -55,8 +55,6 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
   // TODO
   unsigned char whitePoint = 0xff;
-  unsigned char blackPoint = 0x00;
-  int bayerMosaic = 0;
   
   // DNG memory allocation and initialization
 
@@ -95,7 +93,11 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
   ifd.fBitsPerSample[0]          = 8;
   ifd.fSampleFormat[0]           = sfUnsignedInteger;
 
-  ifd.fBlackLevel[0][0][0]       = blackPoint;
+  ifd.fBlackLevel[0][0][0]       = jp4.makerNote().black[0];
+  ifd.fBlackLevel[0][0][1]       = jp4.makerNote().black[1];
+  ifd.fBlackLevel[0][0][2]       = jp4.makerNote().black[2];
+  ifd.fBlackLevel[0][0][3]       = jp4.makerNote().black[3];
+
   ifd.fWhiteLevel[0]             = whitePoint;
 
   ifd.fCFARepeatPatternRows      = 2;
@@ -118,14 +120,45 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
   negative->SetOriginalRawFileName(jp4.filename().c_str());
 
-  negative->SetRGB();
-  negative->SetBayerMosaic(bayerMosaic);
-
   negative->SetWhiteLevel(whitePoint, 0);
-  negative->SetBlackLevel(blackPoint, 0);
 
-  // TODO: orientation
-  negative->SetBaseOrientation(dng_orientation::Normal());
+  negative->SetBlackLevel(jp4.makerNote().black[0], 0);
+  negative->SetBlackLevel(jp4.makerNote().black[1], 1);
+  negative->SetBlackLevel(jp4.makerNote().black[2], 2);
+  negative->SetBlackLevel(jp4.makerNote().black[3], 3);
+
+  negative->SetRGB();
+
+  bool flip_hor = jp4.makerNote().flip_hor;
+  bool flip_ver = jp4.makerNote().flip_ver;
+
+  // see http://www.mozoft.com/tifftest/ContactSheet-001.gif for Orientation hints
+
+  // G R
+  // B G
+  if (flip_hor == 0 && flip_ver == 0) {
+    negative->SetBayerMosaic(0);
+    negative->SetBaseOrientation(dng_orientation::Normal());
+  // R G
+  // G B
+  } else if (flip_hor == 1 && flip_ver == 0) {
+    negative->SetBayerMosaic(1);
+    negative->SetBaseOrientation(dng_orientation::Mirror());
+  // B G
+  // G R
+  } else if (flip_hor == 0 && flip_ver == 1) {
+    negative->SetBayerMosaic(2);
+    negative->SetBaseOrientation(dng_orientation::Mirror180());
+  // G B
+  // R G
+  } else if (flip_hor == 1 && flip_ver == 1) {
+    negative->SetBayerMosaic(3);
+    negative->SetBaseOrientation(dng_orientation::Rotate180());
+  }
+
+  // Override bayer shift if asked
+  if (bayerShift != -1)
+    negative->SetBayerMosaic(bayerShift);
 
   // -------------------------------------------------------------------------------
 
@@ -139,13 +172,12 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename) {
 
   double cameraMult[] = { 0.807133, 1.0, 0.913289};
   negative->SetCameraNeutral(dng_vector_3(cameraMult[0],
-  					  cameraMult[1],
-  					  cameraMult[2]));
+                                          cameraMult[1],
+                                          cameraMult[2]));
 
   // Updating metadata to DNG Negative
-
   dng_exif *exif = negative->GetExif();
-  exif->fModel.Set_ASCII("Elphel 353"); // TODO: model
+  exif->fModel.Set_ASCII("Elphel 353E"); // TODO: model
   exif->fMake.Set_ASCII("Elphel"); // TODO: model
 
   // Time from original shot

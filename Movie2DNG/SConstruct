@@ -38,6 +38,7 @@ env.Append(LIBPATH=["#"])
 # ffmpeg (libraries are added by hand)
 env.ParseConfig("pkg-config --cflags --libs-only-L libavformat")
 env.ParseConfig("pkg-config --cflags --libs-only-L libavcodec")
+env.ParseConfig("pkg-config --cflags --libs libexif")
 
 # DNG SDK
 dng_SRC  = glob("extra/dng_sdk/*.cpp")
@@ -68,7 +69,7 @@ movieEnv = env.Clone()
 movieEnv.MergeFlags("-Wall -Wextra")
 movieEnv.MergeFlags(ARCH_CFLAGS)
 movie2dng = movieEnv.Program("movie2dng", source=movie2dng_SRC,
-                             LIBS=["libdngsdk", "libjpeg_jp4", "libavformat", "libavcodec", "libexpat", "libpthread"])
+                             LIBS=["libdngsdk", "libjpeg_jp4", "libexif", "libavformat", "libavcodec", "libexpat", "libpthread"])
 
 movieEnv.Install(bin_DIR, movie2dng)
 movieEnv.Alias("install", bin_DIR)

@@ -26,7 +26,7 @@ using std::string;
 class DNGWriter {
 
  public:
-  static void write(const string& jp4Filename, const string& dngFilename);
+  static void write(const string& jp4Filename, const string& dngFilename, int bayerShift);
 
 };
 

@@ -3,14 +3,14 @@ Section: graphics
 Priority: extra
 Maintainer: Paulo Henrique Silva <ph.silva@gmail.com>
 Build-Depends: cdbs, debhelper (>= 7), scons, pkg-config, libavcodec-dev,
-               libavformat-dev, libexpat1-dev
+               libavformat-dev, libexpat1-dev, libexif-dev
 Standards-Version: 3.8.4
 Homepage: http://wiki.elphel.com/index.php?title=Movie2dng
 
 Package: movie2dng
 Architecture: i386 amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, libavcodec52 | libavcodec52-unstripped,
-         libavformat52 | libavformat52-unstripped, libexpat1
+         libavformat52 | libavformat52-unstripped, libexpat1, libexif12
 Description: Convert Elphel's JP4 movies to DNG frames.
  This utility program converts Elphel's (http://www.elphel.com) movies
  in JP4 format to frames in Adobe's Digital Negative Format (DNG).
