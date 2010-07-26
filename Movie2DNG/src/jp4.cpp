@@ -115,23 +115,16 @@ void JP4::readMakerNote() {
     _makerNote.gain[0]  = _makerNote.gain[1]  = _makerNote.gain[2]  = _makerNote.gain[3] = 2.0;
     _makerNote.gamma[0] = _makerNote.gamma[1] = _makerNote.gamma[2] = _makerNote.gamma[3] = 0.57;
     _makerNote.black[0] = _makerNote.black[1] = _makerNote.black[2] = _makerNote.black[3] = 0;
-    _makerNote.woi_left   = 0;
-    _makerNote.woi_width  = 1024;
-    _makerNote.woi_top    = 0;
-    _makerNote.woi_height = 1024;
-    _makerNote.flip_hor = 0;
-    _makerNote.flip_ver = 0;
-    _makerNote.bayer_mode = 0;
-    _makerNote.color_mode = 0;
     _makerNote.decim_hor = 1;
     _makerNote.decim_ver = 1;
     _makerNote.bin_hor = 1;
     _makerNote.bin_ver = 1;
   }
 
-  long makerNote[makerNoteEntry->size/4];
+  int makerNoteLength = makerNoteEntry->size/4;
+  long makerNote[makerNoteLength];
 
-  for (unsigned int i = 0; i < makerNoteEntry->size/4; i++) {
+  for (int i = 0; i < makerNoteLength; i++) {
     makerNote[i] = get_long(makerNoteEntry->data + i*4);
   }
 
@@ -144,20 +137,41 @@ void JP4::readMakerNote() {
     _makerNote.black[i] =  (makerNote[i+4]>>24);
   }
 
-  _makerNote.woi_left   = (makerNote[8] & 0xffff);
-  _makerNote.woi_width  = (makerNote[8]>>16) & 0xffff;
-  _makerNote.woi_top    = (makerNote[9] & 0xffff);
-  _makerNote.woi_height = (makerNote[9]>>16);
+  if (makerNoteLength >= 12) {
+    _makerNote.woi_left   = (makerNote[8] & 0xffff);
+    _makerNote.woi_width  = (makerNote[8]>>16) & 0xffff;
+    _makerNote.woi_top    = (makerNote[9] & 0xffff);
+    _makerNote.woi_height = (makerNote[9]>>16);
 
-  _makerNote.flip_hor = (makerNote[10] & 0x1);
-  _makerNote.flip_ver = (makerNote[10]>>1) & 0x1;
+    _makerNote.flip_hor = (makerNote[10] & 0x1);
+    _makerNote.flip_ver = (makerNote[10]>>1) & 0x1;
 
-  _makerNote.bayer_mode = (makerNote[10]>>2) & 0x3;
-  _makerNote.color_mode = (makerNote[10]>>4) & 0x0f;
+    _makerNote.bayer_mode = (makerNote[10]>>2) & 0x3;
+    _makerNote.color_mode = (makerNote[10]>>4) & 0x0f;
 
-  _makerNote.decim_hor = (makerNote[10]>> 8) & 0x0f;
-  _makerNote.decim_ver = (makerNote[10]>>12) & 0x0f;
+    _makerNote.decim_hor = (makerNote[10]>> 8) & 0x0f;
+    _makerNote.decim_ver = (makerNote[10]>>12) & 0x0f;
 
-  _makerNote.bin_hor = (makerNote[10]>>16) & 0x0f;
-  _makerNote.bin_ver = (makerNote[10]>>20) & 0x0f;
+    _makerNote.bin_hor = (makerNote[10]>>16) & 0x0f;
+    _makerNote.bin_ver = (makerNote[10]>>20) & 0x0f;
+  }
+
+  if (makerNoteLength >= 14) {
+    _makerNote.composite = ((makerNote[10] & 0xc0000000)!=0);
+    if (_makerNote.composite) {
+      _makerNote.height1 = makerNote[11] & 0xffff;
+      _makerNote.blank1  =(makerNote[11]>>16) & 0xffff;
+      _makerNote.height2 = makerNote[12] & 0xffff;
+      _makerNote.blank2  =(makerNote[12]>>16) & 0xffff;
+      _makerNote.height3 =(makerNote[9]>>16) - _makerNote.height1-_makerNote.blank1-_makerNote.height2-_makerNote.blank2;
+
+      _makerNote.flip_h1 = (((makerNote[10] >> 24) & 1)!=0);
+      _makerNote.flip_v1 = (((makerNote[10] >> 25) & 1)!=0);
+      _makerNote.flip_h2 = (((makerNote[10] >> 26) & 1)!=0);
+      _makerNote.flip_v2 = (((makerNote[10] >> 27) & 1)!=0);
+      _makerNote.flip_h3 = (((makerNote[10] >> 28) & 1)!=0);
+      _makerNote.flip_v3 = (((makerNote[10] >> 29) & 1)!=0);
+    }
+  }
+
 }

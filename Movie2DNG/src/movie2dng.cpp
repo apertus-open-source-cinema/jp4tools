@@ -27,7 +27,7 @@ extern "C" {
 #include <cstdio>
 #include <cstdlib>
 
-const char* MOVIE2DNG_VERSION = "0.4";
+const char* MOVIE2DNG_VERSION = "0.5";
 
 
 void help(const char* program_name) {
@@ -39,9 +39,10 @@ void help(const char* program_name) {
          "name, it will be added automatically. If you want to save frames on a different\n"
          "directory, use something like DIRECTORY/DEST, for example.\n\n"
          "[options]\n"
-         "\t--shift N, --shift=N Bayer shift, 0-3.\n"
-         "\t-v, --version display program version information.\n"
-         "\t-h, --help    show this help message.\n", program_name);
+         "\t-k, --keep-jp4        keep intermediate JP4 frames.\n"
+         "\t--shift N, --shift=N  Bayer shift, 0-3.\n"
+         "\t-v, --version         display program version information.\n"
+         "\t-h, --help            show this help message.\n", program_name);
 }
 
 void version() {
@@ -57,11 +58,13 @@ int main (int argc, char** argv) {
   struct option cmd_options[] = {{"help", 0, NULL, 'h'},
                                  {"version", 0, NULL, 'v'},
                                  {"shift", 1, NULL, 's'},
+                                 {"keep-jp4", 0, NULL, 'k'},
                                  {0, 0, 0, 0}};
   int option = 0;
   int option_index;
 
   int bayer_shift = -1;
+  bool keep_jp4 = false;
 
   opterr = 0;
 
@@ -79,6 +82,9 @@ int main (int argc, char** argv) {
         printf("Ivalid shift mode, shift=[0-3]\n");
         exit(1);
       }
+      break;
+    case 'k':
+      keep_jp4 = true;
       break;
     default:
       printf("Unknown option.\n\n");
@@ -161,7 +167,8 @@ int main (int argc, char** argv) {
       DNGWriter::write(jp4Filename, dngFilename, bayer_shift);
 
       // remove temporary jp4 file
-      unlink(jp4Filename);
+      if (!keep_jp4)
+        unlink(jp4Filename);
 
       av_free_packet(&packet);
 

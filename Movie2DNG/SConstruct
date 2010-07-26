@@ -4,7 +4,7 @@ from sys import platform, byteorder
 from glob import glob
 
 # command line var=value variables
-ARCH_CFLAGS = ARGUMENTS.get("ARCH", "-O3")
+ARCH_CFLAGS = ARGUMENTS.get("ARCH", "-O3 -g3")
 PREFIX = ARGUMENTS.get("PREFIX", "/usr")
 bin_DIR = os.path.join(PREFIX, "bin")
 
@@ -66,7 +66,7 @@ env.StaticLibrary("jpeg_jp4", source=jpeg_SRC)
 movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp", "src/jp4.cpp"]
 
 movieEnv = env.Clone()
-movieEnv.MergeFlags("-Wall -Wextra")
+movieEnv.MergeFlags("-Wall -Wextra -g3")
 movieEnv.MergeFlags(ARCH_CFLAGS)
 movie2dng = movieEnv.Program("movie2dng", source=movie2dng_SRC,
                              LIBS=["libdngsdk", "libjpeg_jp4", "libexif", "libavformat", "libavcodec", "libexpat", "libpthread"])

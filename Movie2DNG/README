@@ -9,7 +9,7 @@ Usage
 
 To use it, call movie2dng as follow:
 
-movie2dng filename.mov my-jpeg-frame-%05d.jpg my-dng-frame-%05d.dng
+movie2dng filename.mov my-dng-frame-%05d
 
 
 Building

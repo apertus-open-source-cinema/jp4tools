@@ -42,7 +42,20 @@ typedef struct {
   int    decim_ver;
   int    bin_hor;
   int    bin_ver;
+  bool   composite;
+  int    height1;
+  int    blank1;
+  bool   flip_h1;
+  bool   flip_v1;
+  int    height2;
+  int    blank2;
+  bool   flip_h2;
+  bool   flip_v2;
+  int    height3;
+  bool   flip_h3;
+  bool   flip_v3;
 } ElphelMakerNote;
+
 
 class JP4 {
 

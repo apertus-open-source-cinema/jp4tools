@@ -1,3 +1,9 @@
+movie2dng (0.5) lucid; urgency=low
+
+  * Add --keep and more MakerNote handling. 
+
+ -- Paulo Henrique <henrique@r2d2>  Sun, 25 Jul 2010 22:15:14 -0300
+
 movie2dng (0.4) lucid; urgency=low
 
   * Add support for MakerNote reading and automatic flip.
