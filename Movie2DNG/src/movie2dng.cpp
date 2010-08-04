@@ -27,7 +27,7 @@ extern "C" {
 #include <cstdio>
 #include <cstdlib>
 
-const char* MOVIE2DNG_VERSION = "0.5";
+const char* MOVIE2DNG_VERSION = "0.6";
 
 
 void help(const char* program_name) {
@@ -68,7 +68,7 @@ int main (int argc, char** argv) {
 
   opterr = 0;
 
-  while ((option = getopt_long(argc, argv, "hv", cmd_options, &option_index)) != -1) {
+  while ((option = getopt_long(argc, argv, "hvk", cmd_options, &option_index)) != -1) {
     switch (option) {
     case 'h':
       help(argv[0]);

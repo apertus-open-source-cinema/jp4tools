@@ -1,8 +1,16 @@
+movie2dng (0.6) lucid; urgency=low
+
+  * Use MakerNote data to unapply gamma/gain.
+  * Fix stupid memory leak.
+  * Save 16-bit per color DNG file with linearization table.
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Wed, 04 Aug 2010 02:24:01 -0300
+
 movie2dng (0.5) lucid; urgency=low
 
   * Add --keep and more MakerNote handling. 
 
- -- Paulo Henrique <henrique@r2d2>  Sun, 25 Jul 2010 22:15:14 -0300
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Sun, 25 Jul 2010 22:15:14 -0300
 
 movie2dng (0.4) lucid; urgency=low
 

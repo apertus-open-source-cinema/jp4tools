@@ -54,13 +54,13 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   jp4.open(jp4Filename);
 
   // TODO
-  unsigned char whitePoint = 0xff;
+  unsigned int whitePoint = 0x3fff;
   
   // DNG memory allocation and initialization
 
   dng_memory_allocator memalloc(gDefaultDNGMemoryAllocator);
   dng_memory_stream stream(memalloc);
-  stream.Put(&jp4.data().front(), jp4.data().size()*sizeof(unsigned char));
+  stream.Put(jp4.data(), jp4.width()*jp4.height()*sizeof(unsigned short));
 
   unsigned int width = jp4.width();
   unsigned int height = jp4.height();
@@ -72,7 +72,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   host.SetSaveLinearDNG(false);
   host.SetKeepOriginalFile(true);
 
-  AutoPtr<dng_image> image(new dng_simple_image(rect, 1, ttByte, memalloc));
+  AutoPtr<dng_image> image(new dng_simple_image(rect, 1, ttShort, memalloc));
 
   // DNG IFD structure creation
 
@@ -90,7 +90,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   ifd.fTileLength                = height;
 
   ifd.fSamplesPerPixel           = 1;
-  ifd.fBitsPerSample[0]          = 8;
+  ifd.fBitsPerSample[0]          = 16;
   ifd.fSampleFormat[0]           = sfUnsignedInteger;
 
   ifd.fBlackLevel[0][0][0]       = jp4.makerNote().black[0];
@@ -99,6 +99,9 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   ifd.fBlackLevel[0][0][3]       = jp4.makerNote().black[3];
 
   ifd.fWhiteLevel[0]             = whitePoint;
+  
+  ifd.fLinearizationTableType   = ttShort;
+  ifd.fLinearizationTableCount  = 256;
 
   ifd.fCFARepeatPatternRows      = 2;
   ifd.fCFARepeatPatternCols      = 2;
@@ -127,6 +130,21 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   negative->SetBlackLevel(jp4.makerNote().black[2], 2);
   negative->SetBlackLevel(jp4.makerNote().black[3], 3);
 
+  // linearization table (handles gamma, gamma_scale and black level)
+  AutoPtr<dng_memory_block> curve(memalloc.Allocate(256*sizeof(unsigned short)));
+  jp4.reverseGammaTable(curve->Buffer_uint16(), 0);
+  negative->SetLinearization(curve);
+
+  // gain
+  dng_vector gain = dng_vector(4);
+  gain[0] = jp4.makerNote().gain[0];
+  gain[1] = jp4.makerNote().gain[1];
+  gain[2] = jp4.makerNote().gain[2];
+  gain[3] = jp4.makerNote().gain[3];
+
+  negative->SetAnalogBalance(gain);
+  
+  // bayer
   negative->SetRGB();
 
   bool flip_hor = jp4.makerNote().flip_hor;

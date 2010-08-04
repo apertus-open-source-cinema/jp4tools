@@ -21,6 +21,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <jpeglib.h>
 #include <libexif/exif-data.h>
 }
@@ -56,12 +57,12 @@ void JP4::open(const string& _filename) {
   this->_height = dinfo.image_height;
 
   buffer = (*dinfo.mem->alloc_sarray)((j_common_ptr)&dinfo, JPOOL_IMAGE, width(), 1);
-  _data.resize(width()*height());
+  
+  _data = new unsigned short[width()*height()];
 
   jpeg_start_decompress (&dinfo);
 
-  vector<unsigned char> temp;
-  temp.resize(width()*height());
+  unsigned short* temp = new unsigned short[width()*height()];
 
   for (unsigned int line = 0; line < height(); line++) {
     jpeg_read_scanlines (&dinfo, buffer, 1);
@@ -103,6 +104,57 @@ void JP4::open(const string& _filename) {
   jpeg_finish_decompress (&dinfo);
 
   fclose(ifp);
+
+  delete[] temp;
+}
+
+void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) {
+
+  int i;
+  double x, black256 ,k;
+  int* gtable = new int[257];
+  int ig;
+
+  double gamma       = _makerNote.gamma[component];
+  double gamma_scale = _makerNote.gamma_scale[component];
+  double black       = _makerNote.black[component];
+
+  black256=black*256.0;
+  
+  k = 1.0/(256.0-black256);
+
+  if (gamma < 0.13) gamma=0.13;
+  if (gamma >10.0)  gamma=10.0;
+
+  for (i=0; i<257; i++) {
+    x=k*(i-black256);
+    if (x < 0.0 ) x=0.0;
+    ig= (int) (0.5+65535.0*pow(x,gamma));
+    ig=(ig* (int) gamma_scale)/0x400;
+    if (ig > 0xffff) ig=0xffff;
+    gtable[i]=ig;
+  }
+
+  /** now gtable[] is the same as was used in the camera */
+  /** FPGA was using linear interpolation between elements of the gamma table, so now we'll reverse that process */
+  int indx=0;
+  unsigned short outValue;
+  
+  for (i=0; i<256; i++ ) {
+    outValue=128+(i<<8);
+    
+    while ((gtable[indx+1]<outValue) && (indx<256)) indx++;
+    
+    if (indx>=256)
+      rgtable[i]=(65535.0/256);
+    else if (gtable[indx+1]==gtable[indx])
+      rgtable[i]=i;
+    else
+      rgtable[i]=indx+(1.0*(outValue-gtable[indx]))/(gtable[indx+1] - gtable[indx]);
+  }
+
+  delete[] gtable;
+
 }
 
 void JP4::readMakerNote() {
@@ -114,7 +166,9 @@ void JP4::readMakerNote() {
   if (!makerNoteEntry) {
     _makerNote.gain[0]  = _makerNote.gain[1]  = _makerNote.gain[2]  = _makerNote.gain[3] = 2.0;
     _makerNote.gamma[0] = _makerNote.gamma[1] = _makerNote.gamma[2] = _makerNote.gamma[3] = 0.57;
-    _makerNote.black[0] = _makerNote.black[1] = _makerNote.black[2] = _makerNote.black[3] = 0;
+    _makerNote.gamma_scale[0] = _makerNote.gamma_scale[1] = _makerNote.gamma_scale[2] = _makerNote.gamma_scale[3] = 0xffff;
+
+    _makerNote.black[0] = _makerNote.black[1] = _makerNote.black[2] = _makerNote.black[3] = 10/256.0;
     _makerNote.decim_hor = 1;
     _makerNote.decim_ver = 1;
     _makerNote.bin_hor = 1;
@@ -133,8 +187,9 @@ void JP4::readMakerNote() {
     _makerNote.gain[i] = makerNote[i] / 65536.0;  
  
     // (P_PIXEL_LOW<<24) | (P_GAMMA <<16) and 16-bit (6.10) scale for gamma tables, 
-    _makerNote.gamma[i] = ((makerNote[i+4]>>16) & 0xff) / 100.0;
-    _makerNote.black[i] =  (makerNote[i+4]>>24);
+    _makerNote.gamma_scale[i] = (makerNote[i+4] & 0xffff);
+    _makerNote.gamma[i]       = ((makerNote[i+4]>>16) & 0xff) / 100.0;
+    _makerNote.black[i]       =  (makerNote[i+4]>>24) / 256.0;
   }
 
   if (makerNoteLength >= 12) {

@@ -23,12 +23,10 @@
 #include <string>
 using std::string;
 
-#include <vector>
-using std::vector;
-
 typedef struct {
   double gain[4];
   double gamma[4];
+  double gamma_scale[4];
   double black[4];
   int    woi_left;
   int    woi_width;
@@ -62,7 +60,10 @@ class JP4 {
  public:
 
   JP4() {}
-  ~JP4() {}
+
+  ~JP4() {
+     if (_data) delete[] _data;
+   }
 
   void open(const string& _filename);
 
@@ -72,9 +73,11 @@ class JP4 {
 
   unsigned int height() { return _height; }
 
-  vector<unsigned char>& data() { return _data; }
+  unsigned short* data() { return _data; }
 
   ElphelMakerNote& makerNote() { return _makerNote; }
+
+  void reverseGammaTable(unsigned short* rgtable, unsigned int component);
 
  private:
   JP4(const JP4& other); // non-conpyable
@@ -85,7 +88,7 @@ class JP4 {
   string _filename;
   unsigned int _width;
   unsigned int _height;
-  vector<unsigned char> _data;
+  unsigned short* _data;
   ElphelMakerNote _makerNote;
 
 };
