@@ -54,7 +54,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   jp4.open(jp4Filename);
 
   // TODO
-  unsigned int whitePoint = 0x3fff;
+  unsigned int whitePoint = 0xff;
   
   // DNG memory allocation and initialization
 
@@ -93,10 +93,10 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   ifd.fBitsPerSample[0]          = 16;
   ifd.fSampleFormat[0]           = sfUnsignedInteger;
 
-  ifd.fBlackLevel[0][0][0]       = jp4.makerNote().black[0];
-  ifd.fBlackLevel[0][0][1]       = jp4.makerNote().black[1];
-  ifd.fBlackLevel[0][0][2]       = jp4.makerNote().black[2];
-  ifd.fBlackLevel[0][0][3]       = jp4.makerNote().black[3];
+  ifd.fBlackLevel[0][0][0]       = jp4.makerNote().black[0]*256;
+  ifd.fBlackLevel[0][0][1]       = jp4.makerNote().black[1]*256;
+  ifd.fBlackLevel[0][0][2]       = jp4.makerNote().black[2]*256;
+  ifd.fBlackLevel[0][0][3]       = jp4.makerNote().black[3]*256;
 
   ifd.fWhiteLevel[0]             = whitePoint;
   
