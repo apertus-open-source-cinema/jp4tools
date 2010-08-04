@@ -125,10 +125,10 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
 
   negative->SetWhiteLevel(whitePoint, 0);
 
-  negative->SetBlackLevel(jp4.makerNote().black[0], 0);
-  negative->SetBlackLevel(jp4.makerNote().black[1], 1);
-  negative->SetBlackLevel(jp4.makerNote().black[2], 2);
-  negative->SetBlackLevel(jp4.makerNote().black[3], 3);
+  negative->SetBlackLevel(jp4.makerNote().black[0]*256, 0);
+  negative->SetBlackLevel(jp4.makerNote().black[1]*256, 1);
+  negative->SetBlackLevel(jp4.makerNote().black[2]*256, 2);
+  negative->SetBlackLevel(jp4.makerNote().black[3]*256, 3);
 
   // linearization table (handles gamma, gamma_scale and black level)
   AutoPtr<dng_memory_block> curve(memalloc.Allocate(256*sizeof(unsigned short)));

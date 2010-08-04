@@ -1,3 +1,9 @@
+movie2dng (0.7) lucid; urgency=low
+
+  * Fix black level. 
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Wed, 04 Aug 2010 03:25:59 -0300
+
 movie2dng (0.6) lucid; urgency=low
 
   * Use MakerNote data to unapply gamma/gain.
