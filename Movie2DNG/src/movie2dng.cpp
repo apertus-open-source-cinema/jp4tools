@@ -43,6 +43,7 @@ void help(const char* program_name) {
          "[options]\n"
          "\t--jp4        save frames in JP4 format.\n"
          "\t--dng        save frames in DNG format after deblock and linearization.\n"
+         "\t--gui        output information in a format suitable for a GUI program.\n"
          "\t-v, --version         display program version information.\n"
          "\t-h, --help            show this help message.\n", program_name);
 }
@@ -55,30 +56,35 @@ void version(const char* program_name) {
          "There is NO WARRANTY, to the extent permitted by law.\n", program_name, MOVIE2DNG_VERSION);
 }
 
-const char CMD_JP4 = -100;
-const char CMD_DNG = -101;
+const char CMD_JP4     = -100;
+const char CMD_DNG     = -101;
+const char CMD_GUI     = -102;
+const char CMD_HELP    = -103;
+const char CMD_VERSION = -104;
 
 int main (int argc, char** argv) {
 
-  struct option cmd_options[] = {{"help", 0, NULL, 'h'},
-                                 {"version", 0, NULL, 'v'},
+  struct option cmd_options[] = {{"help", 0, NULL, CMD_HELP},
+                                 {"version", 0, NULL, CMD_VERSION},
                                  {"jp4", 0, NULL, CMD_JP4},
                                  {"dng", 0, NULL, CMD_DNG},
+                                 {"gui", 0, NULL, CMD_GUI},
                                  {0, 0, 0, 0}};
   int option = 0;
   int option_index;
 
   bool save_jp4 = false;
   bool save_dng = false;
+  bool gui = false;
 
   opterr = 0;
 
   while ((option = getopt_long(argc, argv, "hv", cmd_options, &option_index)) != -1) {
     switch (option) {
-    case 'h':
+    case CMD_HELP:
       help(argv[0]);
       exit(0);
-    case 'v':
+    case CMD_VERSION:
       version(argv[0]);
       exit(0);
     case CMD_JP4:
@@ -86,6 +92,9 @@ int main (int argc, char** argv) {
       break;
     case CMD_DNG:
       save_dng = true;
+      break;
+    case CMD_GUI:
+      gui = true;
       break;
     default:
       printf("Unknown option.\n\n");
@@ -181,7 +190,11 @@ int main (int argc, char** argv) {
 
     int frame = 1;
 
-    fprintf(stdout, "#frames: %ld\n", ctx->streams[0]->nb_frames);
+    if (gui)
+      fprintf(stdout, "%ld\n", ctx->streams[0]->nb_frames);
+    else
+      fprintf(stdout, "#frames: %ld\n", ctx->streams[0]->nb_frames);
+    fflush(stdout);
 
     while (av_read_frame(ctx, &packet) >= 0) {
 
@@ -210,7 +223,10 @@ int main (int argc, char** argv) {
 
       av_free_packet(&packet);
 
-      fprintf(stdout, "Converting frame %d...\r", frame);
+      if (gui)
+        fprintf(stdout, "%d\n", frame);
+      else
+        fprintf(stdout, "Converting frame %d...\r", frame);
       fflush(stdout);
  
       frame++;

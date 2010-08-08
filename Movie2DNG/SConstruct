@@ -30,6 +30,11 @@ if byteorder == "big":
 else:
     env.Append(CPPDEFINES=["qDNGLittleEndian=1"])
 
+# profile support
+if ARGUMENTS.get("profile", 0):
+    env.Append(CPPFLAGS=["-pg"])
+    env.Append(LINKFLAGS=["-pg"])
+
 # system independent variables
 env.MergeFlags(ARCH_CFLAGS)
 env.Prepend(CPPPATH=["extra/jpeg-6b-jp4", "extra/dng_sdk", "extra/xmp_sdk/include", "extra/xmp_sdk/common", "extra/md5"])
