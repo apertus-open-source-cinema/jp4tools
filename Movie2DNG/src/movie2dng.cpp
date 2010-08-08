@@ -33,7 +33,7 @@ const char* MOVIE2DNG_VERSION = "0.8";
 
 void help(const char* program_name) {
   printf("Usage:\n\n"
-         "%s [options] (at least one of --dng|--jp4|--pgm) SOURCE DEST\n\n"
+         "%s [options] (at least one of --dng|--jp4) SOURCE DEST\n\n"
          "This program will convert the SOURCE JP4 movie to individual frames named\n"
          "DEST-NNNNNN.dng, where NNNNNN will be replaced by the frame number starting\n"
          "at 1. Note that there is no need to specify the .dng extension on the frame\n"
