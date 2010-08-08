@@ -48,6 +48,9 @@ md5_SRC  = glob("extra/md5/*.cpp")
 
 env.StaticLibrary("dngsdk", source=dng_SRC+xmp_SRC+md5_SRC)
 
+#env.Append(CPPDEFINES=["qDNGValidateTarget=1"])
+#env.Program("dng_validate", source=["tests/dng_validate.cpp"], LIBS=["libdngsdk", "libexpat"])
+
 # JP4 modified libjpeg
 jpeg_SRC = Split("jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c "
                  "jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c "
@@ -60,16 +63,19 @@ jpeg_SRC = Split("jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c
 
 jpeg_SRC = ["extra/jpeg-6b-jp4/%s" % src for src in jpeg_SRC]
 
-env.StaticLibrary("jpeg_jp4", source=jpeg_SRC)
+# JP4
+jp4_SRC = ["src/jp4.cpp"] + jpeg_SRC
+env.StaticLibrary("jp4", source=jp4_SRC)
 
 # movie2dng
-movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp", "src/jp4.cpp"]
+movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp"]
 
 movieEnv = env.Clone()
 movieEnv.MergeFlags("-Wall -Wextra -g3")
 movieEnv.MergeFlags(ARCH_CFLAGS)
+movieEnv.MergeFlags("-Wl,-rpath=%s" % movieEnv.Dir("#").abspath)
 movie2dng = movieEnv.Program("movie2dng", source=movie2dng_SRC,
-                             LIBS=["libdngsdk", "libjpeg_jp4", "libexif", "libavformat", "libavcodec", "libexpat", "libpthread"])
+                             LIBS=["libjp4", "libdngsdk", "libavformat", "libavcodec", "libexpat", "libexif", "libpthread"])
 
 movieEnv.Install(bin_DIR, movie2dng)
 movieEnv.Alias("install", bin_DIR)

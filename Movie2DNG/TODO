@@ -17,3 +17,7 @@ TODO
 * Use memory buffer: frame->jpeg->dng->zip
 * Faster deblock using vectorization
 * CinemaDNG
+
+
+- crop
+- rotate

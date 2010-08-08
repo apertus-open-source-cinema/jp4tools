@@ -17,6 +17,7 @@
   along with movie2dng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "jp4.h"
 #include "dngwriter.h"
 
 extern "C" {
@@ -27,64 +28,64 @@ extern "C" {
 #include <cstdio>
 #include <cstdlib>
 
-const char* MOVIE2DNG_VERSION = "0.7";
+const char* MOVIE2DNG_VERSION = "0.8";
 
 
 void help(const char* program_name) {
   printf("Usage:\n\n"
-         "%s [options] SOURCE DEST\n\n"
+         "%s [options] (at least one of --dng|--jp4|--pgm) SOURCE DEST\n\n"
          "This program will convert the SOURCE JP4 movie to individual frames named\n"
          "DEST-NNNNNN.dng, where NNNNNN will be replaced by the frame number starting\n"
          "at 1. Note that there is no need to specify the .dng extension on the frame\n"
          "name, it will be added automatically. If you want to save frames on a different\n"
-         "directory, use something like DIRECTORY/DEST, for example.\n\n"
+         "directory, use something like DIRECTORY/DEST, for example.\n"
+         "If you want to convert individual frames, pass they as SOURCE, DEST will be filled for you.\n\n"
          "[options]\n"
-         "\t-k, --keep-jp4        keep intermediate JP4 frames.\n"
-         "\t--shift N, --shift=N  Bayer shift, 0-3.\n"
+         "\t--jp4        save frames in JP4 format.\n"
+         "\t--dng        save frames in DNG format after deblock and linearization.\n"
          "\t-v, --version         display program version information.\n"
          "\t-h, --help            show this help message.\n", program_name);
 }
 
-void version() {
-  printf("movie2dng %s\n"
+void version(const char* program_name) {
+  printf("%s %s\n"
          "Copyright (C) 2010 Paulo Henrique Silva\n"
          "License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.\n"
          "This is free software: you are free to change and redistribute it.\n"
-         "There is NO WARRANTY, to the extent permitted by law.\n", MOVIE2DNG_VERSION);
+         "There is NO WARRANTY, to the extent permitted by law.\n", program_name, MOVIE2DNG_VERSION);
 }
+
+const char CMD_JP4 = -100;
+const char CMD_DNG = -101;
 
 int main (int argc, char** argv) {
 
   struct option cmd_options[] = {{"help", 0, NULL, 'h'},
                                  {"version", 0, NULL, 'v'},
-                                 {"shift", 1, NULL, 's'},
-                                 {"keep-jp4", 0, NULL, 'k'},
+                                 {"jp4", 0, NULL, CMD_JP4},
+                                 {"dng", 0, NULL, CMD_DNG},
                                  {0, 0, 0, 0}};
   int option = 0;
   int option_index;
 
-  int bayer_shift = -1;
-  bool keep_jp4 = false;
+  bool save_jp4 = false;
+  bool save_dng = false;
 
   opterr = 0;
 
-  while ((option = getopt_long(argc, argv, "hvk", cmd_options, &option_index)) != -1) {
+  while ((option = getopt_long(argc, argv, "hv", cmd_options, &option_index)) != -1) {
     switch (option) {
     case 'h':
       help(argv[0]);
       exit(0);
     case 'v':
-      version();
+      version(argv[0]);
       exit(0);
-    case 's':
-      bayer_shift = atoi(optarg);
-      if (bayer_shift < 0 || bayer_shift > 3) {
-        printf("Ivalid shift mode, shift=[0-3]\n");
-        exit(1);
-      }
+    case CMD_JP4:
+      save_jp4 = true;
       break;
-    case 'k':
-      keep_jp4 = true;
+    case CMD_DNG:
+      save_dng = true;
       break;
     default:
       printf("Unknown option.\n\n");
@@ -93,33 +94,64 @@ int main (int argc, char** argv) {
     }
   }
 
-  if (argc-optind != 2) {
-    help(argv[0]);
-    exit(1);
-  } 
+  if (argc-optind < 1) {
+   help(argv[0]);
+   exit(1);
+  }
 
-  const char* sourceFilename = argv[optind];
-  const char* frameName = argv[optind+1];
+  if (!save_dng && !save_jp4) {
+   help(argv[0]);
+   exit(1);
+  }
 
   // Check if sourceFilename is a movie or a single frame
-  const char* jp4 = strcasestr(sourceFilename, ".jp4");
-  const char* jp46 = strcasestr(sourceFilename, ".jp46");
+  char* sourceFilename = argv[optind];
 
-  if (jp4 || jp46) {
+  const char* is_jp4 = strcasestr(sourceFilename, ".jp4");
+  const char* is_jp46 = strcasestr(sourceFilename, ".jp46");
 
-    DNGWriter::write(sourceFilename, frameName, bayer_shift);
+  int n_args = 0;
+
+  if (is_jp4 || is_jp46)
+   n_args = 1;
+  else
+   n_args = 2;
+
+  if (argc-optind != n_args) {
+    help(argv[0]);
+    exit(1);
+  }
+
+  const char* frameName = argv[optind+1];
+
+  char jp4FilenameFmt[255];
+  char dngFilenameFmt[255];
+
+  snprintf(jp4FilenameFmt, 255, "%s-%%06d.jp4", frameName);
+  snprintf(dngFilenameFmt, 255, "%s-%%06d.dng", frameName);
+
+  char jp4Filename[255];
+  char dngFilename[255];
+
+  if (is_jp4 || is_jp46) {
+
+      strncpy(jp4Filename, sourceFilename, 255);
+
+      char* ext = strrchr(sourceFilename, '.');
+      // cut string at extension point
+      if (ext) *ext=0;
+
+      snprintf(dngFilename, 255, "%s.dng", sourceFilename);
+
+      JP4 jp4;
+      jp4.open(jp4Filename);
+
+      if (save_dng)
+        DNGWriter::write(jp4, dngFilename);
 
   } else {
 
     AVFormatContext* ctx;
-    char jp4FilenameFmt[255];
-    char dngFilenameFmt[255];
-
-    snprintf(jp4FilenameFmt, 255, "%s-%%06d.jpg", frameName);
-    snprintf(dngFilenameFmt, 255, "%s-%%06d.dng", frameName);
-
-    char jp4Filename[255];
-    char dngFilename[255];
 
     av_register_all();
 
@@ -149,6 +181,8 @@ int main (int argc, char** argv) {
 
     int frame = 1;
 
+    fprintf(stdout, "#frames: %ld\n", ctx->streams[0]->nb_frames);
+
     while (av_read_frame(ctx, &packet) >= 0) {
 
       snprintf(jp4Filename, 255, jp4FilenameFmt, frame);
@@ -163,11 +197,15 @@ int main (int argc, char** argv) {
       fwrite(packet.data, packet.size, 1, fd);
       fclose(fd);
 
+      JP4 jp4;
+      jp4.open(jp4Filename);
+
       // convert to DNG
-      DNGWriter::write(jp4Filename, dngFilename, bayer_shift);
+      if (save_dng)
+        DNGWriter::write(jp4, dngFilename);
 
       // remove temporary jp4 file
-      if (!keep_jp4)
+      if (!save_jp4)
         unlink(jp4Filename);
 
       av_free_packet(&packet);

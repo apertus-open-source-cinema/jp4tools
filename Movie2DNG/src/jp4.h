@@ -67,17 +67,23 @@ class JP4 {
 
   void open(const string& _filename);
 
-  const string& filename() { return _filename; }
+  const string& filename() const { return _filename; }
 
-  unsigned int width() { return _width; }
+  unsigned int width() const { return _width; }
 
-  unsigned int height() { return _height; }
+  unsigned int height() const { return _height; }
 
-  unsigned short* data() { return _data; }
+  unsigned short* data() const { return _data; }
 
-  ElphelMakerNote& makerNote() { return _makerNote; }
+  const ElphelMakerNote& makerNote() const { return _makerNote; }
 
-  void reverseGammaTable(unsigned short* rgtable, unsigned int component);
+  void reverseGammaTable(unsigned short* rgtable, unsigned int component) const;
+
+  void writePGM(const string& pgmFilename) const;
+
+  void flipX();
+  
+  void flipY();
 
  private:
   JP4(const JP4& other); // non-conpyable

@@ -1,3 +1,14 @@
+movie2dng (0.8) lucid; urgency=low
+
+  * Fix 16 bit per color DNG support (wrong linearization table was making DNG SDK unhappy).
+  * Add bayer shift support in JP4 itself (it was handled by DNG Writer before).
+  * command line: now you can select any of --dng --jp4, no defaults (otherwise we will need --no* options), you have to choose at least one.
+  * command line: removed --shift and --keep-jp4, the last is now achieved passing --jp4 option,
+    the former is handled by MakerNote reading now.
+  * command line: when converting single frames output filename would be `basename`.extension, no need to specify DEST.
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Sun, 08 Aug 2010 05:33:31 -0300
+
 movie2dng (0.7) lucid; urgency=low
 
   * Fix black level. 

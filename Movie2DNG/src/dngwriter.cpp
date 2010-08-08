@@ -46,15 +46,10 @@
 #include <vector>
 using std::vector;
 
-void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int bayerShift) {
-
-  // Reading RAW JP4 data
-
-  JP4 jp4;
-  jp4.open(jp4Filename);
+void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
 
   // TODO
-  unsigned int whitePoint = 0xff;
+  unsigned int whitePoint = 0xffff;
   
   // DNG memory allocation and initialization
 
@@ -86,6 +81,7 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
 
   ifd.fImageWidth                = width;
   ifd.fImageLength               = height;
+
   ifd.fTileWidth                 = width;
   ifd.fTileLength                = height;
 
@@ -125,10 +121,10 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
 
   negative->SetWhiteLevel(whitePoint, 0);
 
-  negative->SetBlackLevel(jp4.makerNote().black[0]*256, 0);
-  negative->SetBlackLevel(jp4.makerNote().black[1]*256, 1);
-  negative->SetBlackLevel(jp4.makerNote().black[2]*256, 2);
-  negative->SetBlackLevel(jp4.makerNote().black[3]*256, 3);
+  negative->SetBlackLevel(jp4.makerNote().black[0]*65536, 0);
+  negative->SetBlackLevel(jp4.makerNote().black[1]*65536, 1);
+  negative->SetBlackLevel(jp4.makerNote().black[2]*65536, 2);
+  negative->SetBlackLevel(jp4.makerNote().black[3]*65536, 3);
 
   // linearization table (handles gamma, gamma_scale and black level)
   AutoPtr<dng_memory_block> curve(memalloc.Allocate(256*sizeof(unsigned short)));
@@ -146,37 +142,8 @@ void DNGWriter::write(const string& jp4Filename, const string& dngFilename, int 
   
   // bayer
   negative->SetRGB();
-
-  bool flip_hor = jp4.makerNote().flip_hor;
-  bool flip_ver = jp4.makerNote().flip_ver;
-
-  // see http://www.mozoft.com/tifftest/ContactSheet-001.gif for Orientation hints
-
-  // G R
-  // B G
-  if (flip_hor == 0 && flip_ver == 0) {
-    negative->SetBayerMosaic(0);
-    negative->SetBaseOrientation(dng_orientation::Normal());
-  // R G
-  // G B
-  } else if (flip_hor == 1 && flip_ver == 0) {
-    negative->SetBayerMosaic(1);
-    negative->SetBaseOrientation(dng_orientation::Mirror());
-  // B G
-  // G R
-  } else if (flip_hor == 0 && flip_ver == 1) {
-    negative->SetBayerMosaic(2);
-    negative->SetBaseOrientation(dng_orientation::Mirror180());
-  // G B
-  // R G
-  } else if (flip_hor == 1 && flip_ver == 1) {
-    negative->SetBayerMosaic(3);
-    negative->SetBaseOrientation(dng_orientation::Rotate180());
-  }
-
-  // Override bayer shift if asked
-  if (bayerShift != -1)
-    negative->SetBayerMosaic(bayerShift);
+  negative->SetBayerMosaic(0);
+  negative->SetBaseOrientation(dng_orientation::Normal());
 
   // -------------------------------------------------------------------------------
 

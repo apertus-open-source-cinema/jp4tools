@@ -9,7 +9,7 @@ Usage
 
 To use it, call movie2dng as follow:
 
-movie2dng filename.mov my-dng-frame-%05d
+movie2dng --dng filename.mov my-dng-frame-%05d
 
 
 Building
@@ -18,8 +18,11 @@ Building
 It uses scons to he build, try writing scons on you shell and Ubuntu
 will tell you how to install if you don't have it.
 
-You'll also need ffmpeg installed, libavcodec-dev and libavformat-dev
-packages on Ubuntu do the job.
+You'll also need ffmpeg, expat and libexif.
+
+On Ubuntu, try this.
+
+sudo apt-get install libavcodec-dev libavformat-dev libexpat1-dev libexif-dev.
 
 just type "scons" and you'll end up with a movi2dng executable.
 

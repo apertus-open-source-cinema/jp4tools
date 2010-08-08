@@ -23,10 +23,12 @@
 #include <string>
 using std::string;
 
+class JP4;
+
 class DNGWriter {
 
  public:
-  static void write(const string& jp4Filename, const string& dngFilename, int bayerShift);
+  static void write(const JP4& jp4, const string& dngFilename);
 
 };
 

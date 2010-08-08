@@ -44,6 +44,8 @@ void JP4::open(const string& _filename) {
 
   FILE *ifp;
 
+  readMakerNote();
+	   
   dinfo.err = jpeg_std_error (&jerr);
 
   ifp = fopen(filename().c_str(), "rb");
@@ -89,26 +91,20 @@ void JP4::open(const string& _filename) {
           _data[x + i + h_of + b_of] = temp[x + index1[i] + index2[j] + b_of];
 
 
-//   PGM debug
+  // adjust bayer shift
+  if (_makerNote.flip_hor)
+    flipX();
 
-//   printf("P2\n%d %d\n%d\n", width(), height(), 0xff);
-//   for (int i = 0; i < height(); i++) {
-//     for (int j = 0; j < width(); j++) {
-//       printf("%d ", data()[i*width() + j]);
-//     }
-//     printf("\n");
-//   }
+  if (_makerNote.flip_ver)
+    flipY();
 
-  readMakerNote();
-	   
   jpeg_finish_decompress (&dinfo);
-
   fclose(ifp);
-
   delete[] temp;
+
 }
 
-void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) {
+void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) const {
 
   int i;
   double x, black256 ,k;
@@ -150,11 +146,10 @@ void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) {
     else if (gtable[indx+1]==gtable[indx])
       rgtable[i]=i;
     else
-      rgtable[i]=indx+(1.0*(outValue-gtable[indx]))/(gtable[indx+1] - gtable[indx]);
+      rgtable[i]=256.0*(indx+(1.0*(outValue-gtable[indx]))/(gtable[indx+1] - gtable[indx]));
   }
 
   delete[] gtable;
-
 }
 
 void JP4::readMakerNote() {
@@ -230,3 +225,34 @@ void JP4::readMakerNote() {
   }
 
 }
+
+void JP4::flipX() {
+
+  for (unsigned int y = 0; y < _height/2; y++) {
+    for (unsigned int x = 0; x < _width; x++) {
+      unsigned int src = y*_width + x;
+      unsigned int dst = (_height-y-1)*_width + x;
+
+      unsigned short tmp = _data[src];
+      _data[src] = _data[dst];
+      _data[dst] = tmp;
+    }
+  }
+
+}
+ 
+void JP4::flipY() {
+
+  for (unsigned int y = 0; y < _height; y++) {
+    for (unsigned int x = 0; x < _width/2; x++) {
+      unsigned int src = y*_width + x;
+      unsigned int dst = y*_width + (_width-x-1);
+
+      unsigned short tmp = _data[src];
+      _data[src] = _data[dst];
+      _data[dst] = tmp;
+    }
+  }
+
+}
+
