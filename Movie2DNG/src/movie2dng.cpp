@@ -44,6 +44,7 @@ void help(const char* program_name) {
          "\t--jp4        save frames in JP4 format.\n"
          "\t--dng        save frames in DNG format after deblock and linearization.\n"
          "\t--gui        output information in a format suitable for a GUI program.\n"
+         "\t--frames N   convert only the N-th first frames.\n"
          "\t-v, --version         display program version information.\n"
          "\t-h, --help            show this help message.\n", program_name);
 }
@@ -56,11 +57,12 @@ void version(const char* program_name) {
          "There is NO WARRANTY, to the extent permitted by law.\n", program_name, MOVIE2DNG_VERSION);
 }
 
-const char CMD_JP4     = -100;
-const char CMD_DNG     = -101;
-const char CMD_GUI     = -102;
-const char CMD_HELP    = -103;
-const char CMD_VERSION = -104;
+const char CMD_JP4      = -100;
+const char CMD_DNG      = -101;
+const char CMD_GUI      = -102;
+const char CMD_HELP     = -103;
+const char CMD_VERSION  = -104;
+const char CMD_N_FRAMES = -105;
 
 int main (int argc, char** argv) {
 
@@ -69,6 +71,7 @@ int main (int argc, char** argv) {
                                  {"jp4", 0, NULL, CMD_JP4},
                                  {"dng", 0, NULL, CMD_DNG},
                                  {"gui", 0, NULL, CMD_GUI},
+                                 {"frames", 1, NULL, CMD_N_FRAMES},
                                  {0, 0, 0, 0}};
   int option = 0;
   int option_index;
@@ -76,6 +79,7 @@ int main (int argc, char** argv) {
   bool save_jp4 = false;
   bool save_dng = false;
   bool gui = false;
+  long int n_frames = 0;
 
   opterr = 0;
 
@@ -95,6 +99,9 @@ int main (int argc, char** argv) {
       break;
     case CMD_GUI:
       gui = true;
+      break;
+    case CMD_N_FRAMES:
+      n_frames = atoi(optarg);
       break;
     default:
       printf("Unknown option.\n\n");
@@ -190,13 +197,17 @@ int main (int argc, char** argv) {
 
     int frame = 1;
 
+    // number of frames to convert
+    n_frames = n_frames? n_frames: ctx->streams[0]->nb_frames; 
+
     if (gui)
-      fprintf(stdout, "%ld\n", ctx->streams[0]->nb_frames);
+      fprintf(stdout, "%ld\n", n_frames);
     else
-      fprintf(stdout, "#frames: %ld\n", ctx->streams[0]->nb_frames);
+      fprintf(stdout, "#frames: %ld\n", n_frames);
     fflush(stdout);
 
-    while (av_read_frame(ctx, &packet) >= 0) {
+
+    while (av_read_frame(ctx, &packet) >= 0 && frame <= n_frames) {
 
       snprintf(jp4Filename, 255, jp4FilenameFmt, frame);
       snprintf(dngFilename, 255, dngFilenameFmt, frame);
