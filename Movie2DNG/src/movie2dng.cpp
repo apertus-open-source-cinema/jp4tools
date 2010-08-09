@@ -23,6 +23,9 @@
 extern "C" {
 #include <libavformat/avformat.h>
 #include <getopt.h>
+#include <libgen.h>
+#include <dirent.h>
+#include <sys/stat.h>
 }
 
 #include <cstdio>
@@ -33,7 +36,7 @@ const char* MOVIE2DNG_VERSION = "0.8";
 
 void help(const char* program_name) {
   printf("Usage:\n\n"
-         "%s [options] (at least one of --dng|--jp4) SOURCE DEST\n\n"
+         "%s [options] (at least one of --dng|--jp4) SOURCE [DEST]\n\n"
          "This program will convert the SOURCE JP4 movie to individual frames named\n"
          "DEST-NNNNNN.dng, where NNNNNN will be replaced by the frame number starting\n"
          "at 1. Note that there is no need to specify the .dng extension on the frame\n"
@@ -126,38 +129,56 @@ int main (int argc, char** argv) {
   const char* is_jp4 = strcasestr(sourceFilename, ".jp4");
   const char* is_jp46 = strcasestr(sourceFilename, ".jp46");
 
-  int n_args = 0;
+  char frameName[_POSIX_PATH_MAX];
 
-  if (is_jp4 || is_jp46)
-   n_args = 1;
-  else
-   n_args = 2;
+  int n_args = argc-optind;
 
-  if (argc-optind != n_args) {
-    help(argv[0]);
-    exit(1);
+  if (n_args == 1) {
+    // use sourceFilename without extension as frame name
+    strncpy(frameName, sourceFilename, _POSIX_PATH_MAX);
+
+    char* ext = strrchr(frameName, '.');
+    // cut string at extension point
+    if (ext) *ext=0;
+
+    char basenameCopy[_POSIX_PATH_MAX];
+    strncpy(basenameCopy, frameName, _POSIX_PATH_MAX);
+    char* frameFilename = basename(basenameCopy);
+
+    strcat(frameName, "/");
+    DIR* dstDir = opendir(frameName);
+    if (!dstDir) {
+      int res = mkdir(frameName, 0777);
+      if (res != 0) {
+        fprintf(stderr, "Could not create output directory '%s' (%s).", frameName, strerror(errno));
+        exit(1);
+      }
+    }
+ 
+    strcat(frameName, frameFilename);
+
+  } else if (n_args >= 2) {
+    strncpy(frameName, argv[optind+1], _POSIX_PATH_MAX);
   }
 
-  const char* frameName = argv[optind+1];
+  char jp4FilenameFmt[_POSIX_PATH_MAX];
+  char dngFilenameFmt[_POSIX_PATH_MAX];
 
-  char jp4FilenameFmt[255];
-  char dngFilenameFmt[255];
+  snprintf(jp4FilenameFmt, _POSIX_PATH_MAX, "%s-%%06d.jp4", frameName);
+  snprintf(dngFilenameFmt, _POSIX_PATH_MAX, "%s-%%06d.dng", frameName);
 
-  snprintf(jp4FilenameFmt, 255, "%s-%%06d.jp4", frameName);
-  snprintf(dngFilenameFmt, 255, "%s-%%06d.dng", frameName);
-
-  char jp4Filename[255];
-  char dngFilename[255];
+  char jp4Filename[_POSIX_PATH_MAX];
+  char dngFilename[_POSIX_PATH_MAX];
 
   if (is_jp4 || is_jp46) {
 
-      strncpy(jp4Filename, sourceFilename, 255);
+      strncpy(jp4Filename, sourceFilename, _POSIX_PATH_MAX);
 
       char* ext = strrchr(sourceFilename, '.');
       // cut string at extension point
       if (ext) *ext=0;
 
-      snprintf(dngFilename, 255, "%s.dng", sourceFilename);
+      snprintf(dngFilename, _POSIX_PATH_MAX, "%s.dng", sourceFilename);
 
       JP4 jp4;
       jp4.open(jp4Filename);
@@ -209,8 +230,8 @@ int main (int argc, char** argv) {
 
     while (av_read_frame(ctx, &packet) >= 0 && frame <= n_frames) {
 
-      snprintf(jp4Filename, 255, jp4FilenameFmt, frame);
-      snprintf(dngFilename, 255, dngFilenameFmt, frame);
+      snprintf(jp4Filename, _POSIX_PATH_MAX, jp4FilenameFmt, frame);
+      snprintf(dngFilename, _POSIX_PATH_MAX, dngFilenameFmt, frame);
 
       FILE* fd = fopen(jp4Filename, "w");
       if (fd == NULL) {
