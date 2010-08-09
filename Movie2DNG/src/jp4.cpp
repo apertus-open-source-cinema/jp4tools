@@ -90,14 +90,6 @@ void JP4::open(const string& _filename) {
         for (i = 0; i < 16; ++i)
           _data[x + i + h_of + b_of] = temp[x + index1[i] + index2[j] + b_of];
 
-
-  // adjust bayer shift
-  if (_makerNote.flip_hor)
-    flipX();
-
-  if (_makerNote.flip_ver)
-    flipY();
-
   jpeg_finish_decompress (&dinfo);
   fclose(ifp);
   delete[] temp;

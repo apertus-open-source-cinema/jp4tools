@@ -142,8 +142,33 @@ void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
   
   // bayer
   negative->SetRGB();
-  negative->SetBayerMosaic(0);
-  negative->SetBaseOrientation(dng_orientation::Normal());
+
+  bool flip_hor = jp4.makerNote().flip_hor;
+  bool flip_ver = jp4.makerNote().flip_ver;
+
+  // see http://www.mozoft.com/tifftest/ContactSheet-001.gif for Orientation hints
+
+  // G R
+  // B G
+  if (flip_hor == 0 && flip_ver == 0) {
+    negative->SetBayerMosaic(0);
+    negative->SetBaseOrientation(dng_orientation::Normal());
+  // R G
+  // G B
+  } else if (flip_hor == 1 && flip_ver == 0) {
+    negative->SetBayerMosaic(1);
+    negative->SetBaseOrientation(dng_orientation::Mirror());
+  // B G
+  // G R
+  } else if (flip_hor == 0 && flip_ver == 1) {
+    negative->SetBayerMosaic(2);
+    negative->SetBaseOrientation(dng_orientation::Mirror180());
+  // G B
+  // R G
+  } else if (flip_hor == 1 && flip_ver == 1) {
+    negative->SetBayerMosaic(3);
+    negative->SetBaseOrientation(dng_orientation::Rotate180());
+  } 
 
   // -------------------------------------------------------------------------------
 
