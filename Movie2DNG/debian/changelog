@@ -3,7 +3,7 @@ movie2dng (0.9) lucid; urgency=low
   * Fix bug when converting single frames, a empty directory was being created.
   * Add EXIF support for DNG. From current footage, all but X/Y Resolution info is missing (DNG SDK weirdness).
 
- -- Paulo Henrique <ph.silva@gmail.com>  Tue, 10 Aug 2010 22:19:51 -0300
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Tue, 10 Aug 2010 22:19:51 -0300
 
 movie2dng (0.8) lucid; urgency=low
 
