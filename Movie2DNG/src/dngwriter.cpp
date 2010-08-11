@@ -31,6 +31,7 @@
 #include "dng_mosaic_info.h"
 #include "dng_negative.h"
 #include "dng_preview.h"
+#include "dng_rational.h"
 #include "dng_read_image.h"
 #include "dng_render.h"
 #include "dng_simple_image.h"
@@ -45,6 +46,120 @@
 
 #include <vector>
 using std::vector;
+
+inline void SET_DNG_TAG_STRING(const JP4& jp4, ExifTag TAG, dng_string* DEST) {
+  if (jp4.hasTag(TAG)) {                     
+    dng_string s;                            
+    s.Set(jp4.getTagString(TAG).c_str());    
+    *DEST = s;                          
+  }                                          
+}
+
+inline void SET_DNG_TAG_UINT32(const JP4& jp4, ExifTag TAG, uint32* DEST) {
+  if (jp4.hasTag(TAG)) {                     
+    *DEST = jp4.getTagUInt(TAG);        
+  }                                     
+}
+
+inline void SET_DNG_TAG_URATIONAL(const JP4& jp4, ExifTag TAG, dng_urational* DEST) {
+  if (jp4.hasTag(TAG)) {                     
+    unsigned int n = 0; unsigned int d = 1;                    
+    jp4.getTagURational(TAG, &n, &d);         
+    *DEST = dng_urational(n,d);          
+  }                                          
+}
+
+inline void SET_DNG_TAG_SRATIONAL(const JP4& jp4, ExifTag TAG, dng_srational* DEST) {
+  if (jp4.hasTag(TAG)) {                     
+    int n = 0; int d = 1;                    
+    jp4.getTagSRational(TAG, &n, &d);         
+    *DEST = dng_srational(n,d);          
+  }                                          
+}
+
+inline void SET_DNG_TAG_DT_INFO(const JP4& jp4, ExifTag TAG, ExifTag SUBSEC_TAG, dng_date_time_info* DEST) {
+  if (jp4.hasTag(TAG)) {                     
+    string s = jp4.getTagString(TAG);        
+    dng_date_time dt;                        
+    dt.Parse(s.c_str());           
+
+    dng_date_time_info dt_info;              
+    dt_info.SetDateTime(dt);                
+
+    if (jp4.hasTag(SUBSEC_TAG)) {
+      string subsec = jp4.getTagString(SUBSEC_TAG);        
+      dng_string dngSubsec;
+      dngSubsec.Set(subsec.c_str());
+      dt_info.SetSubseconds(dngSubsec);
+    }
+
+    *DEST = dt_info;
+  }                                          
+} 
+
+ExifEntry* FIND_GPS_TAG(const JP4& jp4, int TAG) {
+  ExifData* ed = jp4.exifData();
+  ExifContent* gps = ed->ifd[EXIF_IFD_GPS];
+  if (!gps) return NULL;
+
+  // find given tag withing entries
+  ExifEntry* e = NULL;
+  for (unsigned int i = 0; i < gps->count; i++)
+    if (gps->entries[i]->tag == TAG)
+      e = gps->entries[i];
+
+  return e;
+}
+
+inline void SET_DNG_TAG_GPS_UINT32(const JP4& jp4, int TAG, uint32* DEST) {
+  ExifEntry* e = FIND_GPS_TAG(jp4, TAG);
+  if (e==NULL)
+    return;
+  *DEST = exif_get_long(e->data, exif_data_get_byte_order(jp4.exifData()));
+}
+
+inline void SET_DNG_TAG_GPS_STRING(const JP4& jp4, int TAG, dng_string* DEST) {
+  ExifEntry* e = FIND_GPS_TAG(jp4, TAG);
+  if (e==NULL)
+    return;
+
+  char value[e->size];
+  exif_entry_get_value(e, value, e->size);
+
+  dng_string s;                            
+  s.Set(value);    
+  *DEST = s;                          
+}
+
+
+inline void SET_DNG_TAG_GPS_URATIONAL(const JP4& jp4, int TAG, dng_urational* DEST) {
+  ExifEntry* e = FIND_GPS_TAG(jp4, TAG);
+  if (e==NULL)
+    return;
+  ExifRational r = exif_get_rational(e->data, exif_data_get_byte_order(jp4.exifData()));
+  dng_urational dngR(r.numerator, r.denominator);
+  *DEST = dngR;
+}
+
+inline void SET_DNG_TAG_GPS_URATIONAL_ARRAY_3(const JP4& jp4, int TAG, dng_urational(*DEST)[3]) {
+  ExifEntry* e = FIND_GPS_TAG(jp4, TAG);
+  if (e==NULL)
+    return;
+
+  if (e->components != 3) return;
+
+  ExifRational r1 = exif_get_rational(e->data, exif_data_get_byte_order(jp4.exifData()));
+  dng_urational dngR1(r1.numerator, r1.denominator);
+  (*DEST)[0] = dngR1;
+
+  ExifRational r2 = exif_get_rational(e->data+exif_format_get_size(e->format), exif_data_get_byte_order(jp4.exifData()));
+  dng_urational dngR2(r2.numerator, r2.denominator);
+  (*DEST)[1] = dngR2;
+
+  ExifRational r3 = exif_get_rational(e->data+2*exif_format_get_size(e->format), exif_data_get_byte_order(jp4.exifData()));
+  dng_urational dngR3(r3.numerator, r3.denominator);
+  (*DEST)[2] = dngR3;
+}    
 
 void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
 
@@ -187,23 +302,114 @@ void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
 
   // Updating metadata to DNG Negative
   dng_exif *exif = negative->GetExif();
-  exif->fModel.Set_ASCII("Elphel 353E"); // TODO: model
-  exif->fMake.Set_ASCII("Elphel"); // TODO: model
 
-  // Time from original shot
-  dng_date_time dt; // TODO: datetime
-  dt.fYear   = 2010;
-  dt.fMonth  = 06;
-  dt.fDay    = 22;
-  dt.fHour   = 00;
-  dt.fMinute = 00;
-  dt.fSecond = 01;
+  if (jp4.hasTag(EXIF_TAG_MAKER_NOTE)) {
+    ExifEntry* mNote = jp4.getTagRaw(EXIF_TAG_MAKER_NOTE);
+    AutoPtr<dng_memory_block> makerNote(memalloc.Allocate(sizeof(mNote->data)));
+    memcpy(makerNote->Buffer(), mNote->data, mNote->size);
+    negative->SetMakerNoteSafety(true);
+    negative->SetMakerNote(makerNote);
+  }
 
-  dng_date_time_info dti;
-  dti.SetDateTime(dt);
-  exif->fDateTimeOriginal  = dti;
-  exif->fDateTimeDigitized = dti;
-  negative->UpdateDateTime(dti);
+  SET_DNG_TAG_DT_INFO (jp4, EXIF_TAG_DATE_TIME,           EXIF_TAG_SUB_SEC_TIME,           &exif->fDateTime);
+  SET_DNG_TAG_DT_INFO (jp4, EXIF_TAG_DATE_TIME_ORIGINAL,  EXIF_TAG_SUB_SEC_TIME_ORIGINAL,  &exif->fDateTimeOriginal);
+  SET_DNG_TAG_DT_INFO (jp4, EXIF_TAG_DATE_TIME_DIGITIZED, EXIF_TAG_SUB_SEC_TIME_DIGITIZED, &exif->fDateTimeDigitized);
+		
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_IMAGE_DESCRIPTION,         &exif->fImageDescription);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_MAKE,                      &exif->fMake);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_MODEL,                     &exif->fModel);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_SOFTWARE,                  &exif->fSoftware);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_ARTIST,                    &exif->fArtist);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_COPYRIGHT,                 &exif->fCopyright);
+  SET_DNG_TAG_STRING    (jp4, EXIF_TAG_USER_COMMENT,              &exif->fUserComment);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_TIFF_EP_STANDARD_ID,       &exif->fTIFF_EP_StandardID);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_EXIF_VERSION,              &exif->fExifVersion);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_FLASH_PIX_VERSION,         &exif->fFlashPixVersion);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_EXPOSURE_TIME,             &exif->fExposureTime);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_FNUMBER,                   &exif->fFNumber);
+  SET_DNG_TAG_SRATIONAL (jp4, EXIF_TAG_SHUTTER_SPEED_VALUE,       &exif->fShutterSpeedValue);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_APERTURE_VALUE,            &exif->fApertureValue);
+  SET_DNG_TAG_SRATIONAL (jp4, EXIF_TAG_BRIGHTNESS_VALUE,          &exif->fBrightnessValue);
+  SET_DNG_TAG_SRATIONAL (jp4, EXIF_TAG_EXPOSURE_BIAS_VALUE,       &exif->fExposureBiasValue);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_MAX_APERTURE_VALUE,        &exif->fMaxApertureValue);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_FOCAL_LENGTH,              &exif->fFocalLength);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_DIGITAL_ZOOM_RATIO,        &exif->fDigitalZoomRatio);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_EXPOSURE_INDEX,            &exif->fExposureIndex);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_SUBJECT_DISTANCE,          &exif->fSubjectDistance);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_GAMMA,                     &exif->fGamma);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_BATTERY_LEVEL,             &exif->fBatteryLevelR);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_EXPOSURE_PROGRAM,          &exif->fExposureProgram);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_METERING_MODE,             &exif->fMeteringMode);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_LIGHT_SOURCE,              &exif->fLightSource);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_FLASH,                     &exif->fFlash);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SENSING_METHOD,            &exif->fSensingMethod);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_COLOR_SPACE,               &exif->fColorSpace);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_FILE_SOURCE,               &exif->fFileSource);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SCENE_TYPE,                &exif->fSceneType);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_CUSTOM_RENDERED,           &exif->fCustomRendered);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_EXPOSURE_MODE,             &exif->fExposureMode);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_WHITE_BALANCE,             &exif->fWhiteBalance);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SCENE_CAPTURE_TYPE,        &exif->fSceneCaptureType);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_GAIN_CONTROL,              &exif->fGainControl);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_CONTRAST,                  &exif->fContrast);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SATURATION,                &exif->fSaturation);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SHARPNESS,                 &exif->fSharpness);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_SUBJECT_DISTANCE_RANGE,    &exif->fSubjectDistanceRange);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_FOCAL_LENGTH_IN_35MM_FILM, &exif->fFocalLengthIn35mmFilm);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_ISO_SPEED_RATINGS,         &exif->fISOSpeedRatings[0]);
+  
+  if (jp4.hasTag(EXIF_TAG_SUBJECT_AREA)) {
+    exif->fSubjectAreaCount = 1;
+    exif->fSubjectArea[0] = jp4.getTagUInt(EXIF_TAG_SUBJECT_AREA);
+  }
+  
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_COMPONENTS_CONFIGURATION,    &exif->fComponentsConfiguration);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_COMPRESSED_BITS_PER_PIXEL,   &exif->fCompresssedBitsPerPixel);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_PIXEL_X_DIMENSION,           &exif->fPixelXDimension);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_PIXEL_Y_DIMENSION,           &exif->fPixelYDimension);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_FOCAL_PLANE_X_RESOLUTION,    &exif->fFocalPlaneXResolution);
+  SET_DNG_TAG_URATIONAL (jp4, EXIF_TAG_FOCAL_PLANE_Y_RESOLUTION,    &exif->fFocalPlaneYResolution);
+  SET_DNG_TAG_UINT32    (jp4, EXIF_TAG_FOCAL_PLANE_RESOLUTION_UNIT, &exif->fFocalPlaneResolutionUnit);
+
+  SET_DNG_TAG_GPS_URATIONAL_ARRAY_3 (jp4, EXIF_TAG_GPS_LATITUDE,       &exif->fGPSLatitude);
+  SET_DNG_TAG_GPS_URATIONAL_ARRAY_3 (jp4, EXIF_TAG_GPS_LONGITUDE,      &exif->fGPSLongitude);		
+  SET_DNG_TAG_GPS_URATIONAL_ARRAY_3 (jp4, EXIF_TAG_GPS_TIME_STAMP,     &exif->fGPSTimeStamp);
+  SET_DNG_TAG_GPS_URATIONAL_ARRAY_3 (jp4, EXIF_TAG_GPS_DEST_LATITUDE,  &exif->fGPSDestLatitude);
+  SET_DNG_TAG_GPS_URATIONAL_ARRAY_3 (jp4, EXIF_TAG_GPS_DEST_LONGITUDE, &exif->fGPSDestLongitude);
+
+  SET_DNG_TAG_GPS_UINT32    (jp4, EXIF_TAG_GPS_VERSION_ID,         &exif->fGPSVersionID);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_LATITUDE_REF,       &exif->fGPSLatitudeRef);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_LONGITUDE_REF,      &exif->fGPSLongitudeRef);
+  SET_DNG_TAG_GPS_UINT32    (jp4, EXIF_TAG_GPS_ALTITUDE_REF,       &exif->fGPSAltitudeRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_ALTITUDE,           &exif->fGPSAltitude);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_SATELLITES,         &exif->fGPSSatellites);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_STATUS,             &exif->fGPSStatus);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_MEASURE_MODE,       &exif->fGPSMeasureMode);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_DOP,                &exif->fGPSDOP);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_SPEED_REF,          &exif->fGPSSpeedRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_SPEED,              &exif->fGPSSpeed);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_TRACK_REF,          &exif->fGPSTrackRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_TRACK,              &exif->fGPSTrack);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_IMG_DIRECTION_REF,  &exif->fGPSImgDirectionRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_IMG_DIRECTION,      &exif->fGPSImgDirection);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_MAP_DATUM,          &exif->fGPSMapDatum);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_DEST_LATITUDE_REF,  &exif->fGPSDestLatitudeRef);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_DEST_LONGITUDE_REF, &exif->fGPSDestLongitudeRef);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_DEST_BEARING_REF,   &exif->fGPSDestBearingRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_DEST_BEARING,       &exif->fGPSDestBearing);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_DEST_DISTANCE_REF,  &exif->fGPSDestDistanceRef);
+  SET_DNG_TAG_GPS_URATIONAL (jp4, EXIF_TAG_GPS_DEST_DISTANCE,      &exif->fGPSDestDistance);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_PROCESSING_METHOD,  &exif->fGPSProcessingMethod);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_AREA_INFORMATION,   &exif->fGPSAreaInformation);
+  SET_DNG_TAG_GPS_STRING    (jp4, EXIF_TAG_GPS_DATE_STAMP,         &exif->fGPSDateStamp);
+  SET_DNG_TAG_GPS_UINT32    (jp4, EXIF_TAG_GPS_DIFFERENTIAL,       &exif->fGPSDifferential);
+		
+  SET_DNG_TAG_STRING (jp4, EXIF_TAG_INTEROPERABILITY_INDEX,    &exif->fInteroperabilityIndex);
+  SET_DNG_TAG_UINT32 (jp4, EXIF_TAG_INTEROPERABILITY_VERSION,  &exif->fInteroperabilityVersion);
+
+  SET_DNG_TAG_STRING (jp4, EXIF_TAG_RELATED_IMAGE_FILE_FORMAT, &exif->fRelatedImageFileFormat);
+  SET_DNG_TAG_UINT32 (jp4, EXIF_TAG_RELATED_IMAGE_WIDTH,       &exif->fRelatedImageWidth);
+  SET_DNG_TAG_UINT32 (jp4, EXIF_TAG_RELATED_IMAGE_LENGTH,      &exif->fRelatedImageLength);
 
   // Assign Raw image data.
   negative->SetStage1Image(image);

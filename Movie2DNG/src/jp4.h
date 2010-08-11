@@ -23,6 +23,11 @@
 #include <string>
 using std::string;
 
+extern "C" {
+#include <libexif/exif-data.h>
+#include <libexif/exif-tag.h>
+}
+
 typedef struct {
   double gain[4];
   double gamma[4];
@@ -54,7 +59,6 @@ typedef struct {
   bool   flip_v3;
 } ElphelMakerNote;
 
-
 class JP4 {
 
  public:
@@ -77,13 +81,34 @@ class JP4 {
 
   const ElphelMakerNote& makerNote() const { return _makerNote; }
 
+  //
+  // linearization
+  //
   void reverseGammaTable(unsigned short* rgtable, unsigned int component) const;
 
-  void writePGM(const string& pgmFilename) const;
-
+  //
+  // image manipulation
+  //
   void flipX();
   
   void flipY();
+
+  //
+  // EXIF support
+  //
+  bool hasTag(ExifTag tag) const;
+
+  unsigned int getTagUInt(ExifTag tag) const;
+
+  string getTagString(ExifTag tag) const;
+
+  void getTagURational(ExifTag tag, unsigned int* n, unsigned int* d) const;
+
+  void getTagSRational(ExifTag tag, int* n, int* d) const;
+
+  ExifEntry* getTagRaw(ExifTag tag) const;
+
+  ExifData* exifData() const { return _ed; }
 
  private:
   JP4(const JP4& other); // non-conpyable
@@ -96,6 +121,8 @@ class JP4 {
   unsigned int _height;
   unsigned short* _data;
   ElphelMakerNote _makerNote;
+
+  ExifData* _ed;
 
 };
 

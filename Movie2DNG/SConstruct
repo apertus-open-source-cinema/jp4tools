@@ -4,7 +4,7 @@ from sys import platform, byteorder
 from glob import glob
 
 # command line var=value variables
-ARCH_CFLAGS = ARGUMENTS.get("ARCH", "-O3 -g3")
+ARCH_CFLAGS = ARGUMENTS.get("ARCH", "-g3")
 PREFIX = ARGUMENTS.get("PREFIX", "/usr")
 bin_DIR = os.path.join(PREFIX, "bin")
 
@@ -34,6 +34,11 @@ else:
 if ARGUMENTS.get("profile", 0):
     env.Append(CPPFLAGS=["-pg"])
     env.Append(LINKFLAGS=["-pg"])
+
+if not ARGUMENTS.get("debug", 0):
+    env.MergeFlags("-O3")
+else:
+    env.MergeFlags("-O0")
 
 # system independent variables
 env.MergeFlags(ARCH_CFLAGS)

@@ -133,7 +133,7 @@ int main (int argc, char** argv) {
 
   int n_args = argc-optind;
 
-  if (n_args == 1) {
+  if (n_args == 1 && !(is_jp4 || is_jp46)) {
     // use sourceFilename without extension as frame name
     strncpy(frameName, sourceFilename, _POSIX_PATH_MAX);
 

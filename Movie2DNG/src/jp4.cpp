@@ -24,6 +24,7 @@ extern "C" {
 #include <math.h>
 #include <jpeglib.h>
 #include <libexif/exif-data.h>
+#include <libexif/exif-utils.h>
 }
 
 #include "jp4.h"
@@ -44,6 +45,8 @@ void JP4::open(const string& _filename) {
 
   FILE *ifp;
 
+  // EXIF
+  _ed = exif_data_new_from_file(_filename.c_str());
   readMakerNote();
 	   
   dinfo.err = jpeg_std_error (&jerr);
@@ -146,9 +149,7 @@ void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) con
 
 void JP4::readMakerNote() {
 
-  ExifData* ed = exif_data_new_from_file(filename().c_str());
-
-  ExifEntry* makerNoteEntry = exif_data_get_entry(ed, EXIF_TAG_MAKER_NOTE);
+  ExifEntry* makerNoteEntry = exif_data_get_entry(_ed, EXIF_TAG_MAKER_NOTE);
 
   if (!makerNoteEntry) {
     _makerNote.gain[0]  = _makerNote.gain[1]  = _makerNote.gain[2]  = _makerNote.gain[3] = 2.0;
@@ -248,3 +249,36 @@ void JP4::flipY() {
 
 }
 
+bool JP4::hasTag(ExifTag tag) const {
+  return exif_data_get_entry(_ed, tag) != NULL;
+}
+
+unsigned int JP4::getTagUInt(ExifTag tag) const {
+  ExifEntry* e = exif_data_get_entry(_ed, tag);
+  return exif_get_long(e->data, exif_data_get_byte_order(_ed));
+}
+
+string JP4::getTagString(ExifTag tag) const {
+  ExifEntry* e = exif_data_get_entry(_ed, tag);
+  char value[e->size];
+  exif_entry_get_value(e, value, e->size);
+  return string(value);
+}
+
+void JP4::getTagURational(ExifTag tag, unsigned int* n, unsigned int* d) const {
+  ExifEntry* e = exif_data_get_entry(_ed, tag);
+  ExifRational r = exif_get_rational(e->data, exif_data_get_byte_order(_ed));
+  if (n) *n = r.numerator;
+  if (d) *d = r.denominator;
+}
+
+void JP4::getTagSRational(ExifTag tag, int* n, int* d) const {
+  ExifEntry* e = exif_data_get_entry(_ed, tag);
+  ExifSRational r = exif_get_srational(e->data, exif_data_get_byte_order(_ed));
+  if (n) *n = r.numerator;
+  if (d) *d = r.denominator;
+}
+
+ExifEntry* JP4::getTagRaw(ExifTag tag) const {
+  return exif_data_get_entry(_ed, tag);
+}
