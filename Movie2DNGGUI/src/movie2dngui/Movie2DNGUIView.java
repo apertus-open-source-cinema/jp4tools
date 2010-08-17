@@ -19,6 +19,7 @@
 -----------------------------------------------------------------------------**/
 package movie2dngui;
 
+import java.awt.Dimension;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,7 +27,6 @@ import org.jdesktop.application.Action;
 import org.jdesktop.application.ResourceMap;
 import org.jdesktop.application.SingleFrameApplication;
 import org.jdesktop.application.FrameView;
-import org.jdesktop.application.TaskMonitor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -48,9 +48,6 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         super(app);
 
         initComponents();
-        Movie2DNGUIView.this.getFrame().setBounds(0, 0, 600, 600);
-        Movie2DNGUIView.this.getFrame().setSize(600, 600);
-
 
         String osname = System.getProperty("os.name");
         if (osname.startsWith("Linux")) {
@@ -66,7 +63,12 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         SourceFilename = "";
         DestinationPath = "";
         movie2dngVersion = "";
-        Movie2DNGUIView.this.getFrame().setSize(1024, 600);
+
+        ClipFrameCountTotal = 0;
+        ClipFrameCountConverted = 0;
+        ClipFrameCountLimit = 0;
+        converter_firstline = true;
+        conversion_complete = false;
 
         // check Version of movie2dng
         Process p = null;
@@ -91,13 +93,7 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         // status bar initialization - message timeout, idle icon and busy animation, etc
         ResourceMap resourceMap = getResourceMap();
         int messageTimeout = resourceMap.getInteger("StatusBar.messageTimeout");
-        messageTimer = new Timer(messageTimeout, new ActionListener() {
 
-            public void actionPerformed(ActionEvent e) {
-                statusMessageLabel.setText("");
-            }
-        });
-        messageTimer.setRepeats(false);
         int busyAnimationRate = resourceMap.getInteger("StatusBar.busyAnimationRate");
         for (int i = 0; i < busyIcons.length; i++) {
             busyIcons[i] = resourceMap.getIcon("StatusBar.busyIcons[" + i + "]");
@@ -106,44 +102,18 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
 
             public void actionPerformed(ActionEvent e) {
                 busyIconIndex = (busyIconIndex + 1) % busyIcons.length;
-                statusAnimationLabel.setIcon(busyIcons[busyIconIndex]);
             }
         });
         idleIcon = resourceMap.getIcon("StatusBar.idleIcon");
-        statusAnimationLabel.setIcon(idleIcon);
-        progressBar.setVisible(false);
 
-        // connecting action tasks to status bar via TaskMonitor
-        TaskMonitor taskMonitor = new TaskMonitor(getApplication().getContext());
-        taskMonitor.addPropertyChangeListener(new java.beans.PropertyChangeListener() {
+        messageTimer = new Timer(messageTimeout, new ActionListener() {
 
-            public void propertyChange(java.beans.PropertyChangeEvent evt) {
-                String propertyName = evt.getPropertyName();
-                if ("started".equals(propertyName)) {
-                    if (!busyIconTimer.isRunning()) {
-                        statusAnimationLabel.setIcon(busyIcons[0]);
-                        busyIconIndex = 0;
-                        busyIconTimer.start();
-                    }
-                    progressBar.setVisible(true);
-                    progressBar.setIndeterminate(true);
-                } else if ("done".equals(propertyName)) {
-                    busyIconTimer.stop();
-                    statusAnimationLabel.setIcon(idleIcon);
-                    progressBar.setVisible(false);
-                    progressBar.setValue(0);
-                } else if ("message".equals(propertyName)) {
-                    String text = (String) (evt.getNewValue());
-                    statusMessageLabel.setText((text == null) ? "" : text);
-                    messageTimer.restart();
-                } else if ("progress".equals(propertyName)) {
-                    int value = (Integer) (evt.getNewValue());
-                    progressBar.setVisible(true);
-                    progressBar.setIndeterminate(false);
-                    progressBar.setValue(value);
-                }
+            public void actionPerformed(ActionEvent e) {
             }
         });
+
+        // set the default window size
+        this.getFrame().setMinimumSize(new Dimension(550, 550));
     }
 
     @Action
@@ -169,32 +139,31 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         JBUtton_SelectSource = new javax.swing.JButton();
         CommandLabel = new javax.swing.JLabel();
         command = new javax.swing.JTextField();
-        keepJP4s = new javax.swing.JCheckBox();
-        DestinationLabel = new javax.swing.JLabel();
-        SameAsSource = new javax.swing.JRadioButton();
-        DifferentFolder = new javax.swing.JRadioButton();
-        BayerShiftLabel = new javax.swing.JLabel();
-        BayerShift = new javax.swing.JComboBox();
         ConvertButton = new javax.swing.JButton();
-        SelectDestination = new javax.swing.JButton();
-        subfolders = new javax.swing.JRadioButton();
         movie2dngVersionLabel = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         LogArea = new javax.swing.JTextArea();
+        TabbedSettingsPanel = new javax.swing.JTabbedPane();
+        SettingsPanel = new javax.swing.JPanel();
+        DestinationLabel = new javax.swing.JLabel();
+        SameAsSource = new javax.swing.JRadioButton();
+        subfolders = new javax.swing.JRadioButton();
+        DifferentFolder = new javax.swing.JRadioButton();
+        SelectDestination = new javax.swing.JButton();
+        AdvancedSettingsPanel = new javax.swing.JPanel();
+        BayerShiftLabel = new javax.swing.JLabel();
+        BayerShift = new javax.swing.JComboBox();
         FrameLimiterLabel = new javax.swing.JLabel();
         FrameLimiterAll = new javax.swing.JRadioButton();
         FrameLimiterNumber = new javax.swing.JRadioButton();
         FrameLimiterNumberField = new javax.swing.JTextField();
+        keepJP4s = new javax.swing.JCheckBox();
+        ConverterProgressBar = new javax.swing.JProgressBar();
         menuBar = new javax.swing.JMenuBar();
         javax.swing.JMenu fileMenu = new javax.swing.JMenu();
         javax.swing.JMenuItem exitMenuItem = new javax.swing.JMenuItem();
         javax.swing.JMenu helpMenu = new javax.swing.JMenu();
         javax.swing.JMenuItem aboutMenuItem = new javax.swing.JMenuItem();
-        statusPanel = new javax.swing.JPanel();
-        javax.swing.JSeparator statusPanelSeparator = new javax.swing.JSeparator();
-        statusMessageLabel = new javax.swing.JLabel();
-        statusAnimationLabel = new javax.swing.JLabel();
-        progressBar = new javax.swing.JProgressBar();
         destinationbuttongroup = new javax.swing.ButtonGroup();
         FrameLimiterGroup = new javax.swing.ButtonGroup();
 
@@ -218,14 +187,29 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         command.setEnabled(false);
         command.setName("command"); // NOI18N
 
-        keepJP4s.setText(resourceMap.getString("keepJP4s.text")); // NOI18N
-        keepJP4s.setEnabled(false);
-        keepJP4s.setName("keepJP4s"); // NOI18N
-        keepJP4s.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                keepJP4sActionPerformed(evt);
+        ConvertButton.setText(resourceMap.getString("ConvertButton.text")); // NOI18N
+        ConvertButton.setEnabled(false);
+        ConvertButton.setName("ConvertButton"); // NOI18N
+        ConvertButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                ConvertButtonMouseClicked(evt);
             }
         });
+
+        movie2dngVersionLabel.setText(resourceMap.getString("movie2dngVersionLabel.text")); // NOI18N
+        movie2dngVersionLabel.setName("movie2dngVersionLabel"); // NOI18N
+
+        jScrollPane1.setName("jScrollPane1"); // NOI18N
+
+        LogArea.setColumns(20);
+        LogArea.setEditable(false);
+        LogArea.setRows(5);
+        LogArea.setName("LogArea"); // NOI18N
+        jScrollPane1.setViewportView(LogArea);
+
+        TabbedSettingsPanel.setName("TabbedSettingsPanel"); // NOI18N
+
+        SettingsPanel.setName("SettingsPanel"); // NOI18N
 
         DestinationLabel.setText(resourceMap.getString("DestinationLabel.text")); // NOI18N
         DestinationLabel.setEnabled(false);
@@ -242,6 +226,16 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
             }
         });
 
+        destinationbuttongroup.add(subfolders);
+        subfolders.setText(resourceMap.getString("subfolders.text")); // NOI18N
+        subfolders.setEnabled(false);
+        subfolders.setName("subfolders"); // NOI18N
+        subfolders.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                subfoldersActionPerformed(evt);
+            }
+        });
+
         destinationbuttongroup.add(DifferentFolder);
         DifferentFolder.setText(resourceMap.getString("DifferentFolder.text")); // NOI18N
         DifferentFolder.setEnabled(false);
@@ -251,6 +245,55 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
                 DifferentFolderActionPerformed(evt);
             }
         });
+
+        SelectDestination.setText(resourceMap.getString("SelectDestination.text")); // NOI18N
+        SelectDestination.setEnabled(false);
+        SelectDestination.setName("SelectDestination"); // NOI18N
+        SelectDestination.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                SelectDestinationMouseClicked(evt);
+            }
+        });
+
+        javax.swing.GroupLayout SettingsPanelLayout = new javax.swing.GroupLayout(SettingsPanel);
+        SettingsPanel.setLayout(SettingsPanelLayout);
+        SettingsPanelLayout.setHorizontalGroup(
+            SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(SettingsPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(DestinationLabel)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, SettingsPanelLayout.createSequentialGroup()
+                            .addComponent(DifferentFolder)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(SelectDestination)))
+                    .addComponent(SameAsSource)
+                    .addComponent(subfolders))
+                .addContainerGap(177, Short.MAX_VALUE))
+        );
+        SettingsPanelLayout.setVerticalGroup(
+            SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(SettingsPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(DestinationLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(SettingsPanelLayout.createSequentialGroup()
+                        .addGap(56, 56, 56)
+                        .addGroup(SettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(DifferentFolder)
+                            .addComponent(SelectDestination)))
+                    .addGroup(SettingsPanelLayout.createSequentialGroup()
+                        .addComponent(SameAsSource)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(subfolders)))
+                .addContainerGap(63, Short.MAX_VALUE))
+        );
+
+        TabbedSettingsPanel.addTab(resourceMap.getString("SettingsPanel.TabConstraints.tabTitle"), SettingsPanel); // NOI18N
+
+        AdvancedSettingsPanel.setName("AdvancedSettingsPanel"); // NOI18N
 
         BayerShiftLabel.setText(resourceMap.getString("BayerShiftLabel.text")); // NOI18N
         BayerShiftLabel.setEnabled(false);
@@ -265,45 +308,6 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
                 BayerShiftActionPerformed(evt);
             }
         });
-
-        ConvertButton.setText(resourceMap.getString("ConvertButton.text")); // NOI18N
-        ConvertButton.setEnabled(false);
-        ConvertButton.setName("ConvertButton"); // NOI18N
-        ConvertButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                ConvertButtonMouseClicked(evt);
-            }
-        });
-
-        SelectDestination.setText(resourceMap.getString("SelectDestination.text")); // NOI18N
-        SelectDestination.setEnabled(false);
-        SelectDestination.setName("SelectDestination"); // NOI18N
-        SelectDestination.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                SelectDestinationMouseClicked(evt);
-            }
-        });
-
-        destinationbuttongroup.add(subfolders);
-        subfolders.setText(resourceMap.getString("subfolders.text")); // NOI18N
-        subfolders.setEnabled(false);
-        subfolders.setName("subfolders"); // NOI18N
-        subfolders.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                subfoldersActionPerformed(evt);
-            }
-        });
-
-        movie2dngVersionLabel.setText(resourceMap.getString("movie2dngVersionLabel.text")); // NOI18N
-        movie2dngVersionLabel.setName("movie2dngVersionLabel"); // NOI18N
-
-        jScrollPane1.setName("jScrollPane1"); // NOI18N
-
-        LogArea.setColumns(20);
-        LogArea.setEditable(false);
-        LogArea.setRows(5);
-        LogArea.setName("LogArea"); // NOI18N
-        jScrollPane1.setViewportView(LogArea);
 
         FrameLimiterLabel.setText(resourceMap.getString("FrameLimiterLabel.text")); // NOI18N
         FrameLimiterLabel.setEnabled(false);
@@ -356,6 +360,59 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
             }
         });
 
+        keepJP4s.setText(resourceMap.getString("keepJP4s.text")); // NOI18N
+        keepJP4s.setEnabled(false);
+        keepJP4s.setName("keepJP4s"); // NOI18N
+        keepJP4s.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                keepJP4sActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout AdvancedSettingsPanelLayout = new javax.swing.GroupLayout(AdvancedSettingsPanel);
+        AdvancedSettingsPanel.setLayout(AdvancedSettingsPanelLayout);
+        AdvancedSettingsPanelLayout.setHorizontalGroup(
+            AdvancedSettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(AdvancedSettingsPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(AdvancedSettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(FrameLimiterAll)
+                    .addComponent(FrameLimiterLabel)
+                    .addGroup(AdvancedSettingsPanelLayout.createSequentialGroup()
+                        .addComponent(FrameLimiterNumber)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(FrameLimiterNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(AdvancedSettingsPanelLayout.createSequentialGroup()
+                        .addComponent(BayerShiftLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(BayerShift, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(keepJP4s))
+                .addContainerGap(220, Short.MAX_VALUE))
+        );
+        AdvancedSettingsPanelLayout.setVerticalGroup(
+            AdvancedSettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(AdvancedSettingsPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(FrameLimiterLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(FrameLimiterAll)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(AdvancedSettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(FrameLimiterNumber)
+                    .addComponent(FrameLimiterNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(AdvancedSettingsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(BayerShiftLabel)
+                    .addComponent(BayerShift, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(keepJP4s)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        TabbedSettingsPanel.addTab(resourceMap.getString("AdvancedSettingsPanel.TabConstraints.tabTitle"), AdvancedSettingsPanel); // NOI18N
+
+        ConverterProgressBar.setName("ConverterProgressBar"); // NOI18N
+
         javax.swing.GroupLayout mainPanelLayout = new javax.swing.GroupLayout(mainPanel);
         mainPanel.setLayout(mainPanelLayout);
         mainPanelLayout.setHorizontalGroup(
@@ -363,39 +420,18 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, mainPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(ConvertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 573, Short.MAX_VALUE)
-                    .addComponent(command, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 573, Short.MAX_VALUE)
+                    .addComponent(TabbedSettingsPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 434, Short.MAX_VALUE)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 434, Short.MAX_VALUE)
+                    .addGroup(mainPanelLayout.createSequentialGroup()
+                        .addComponent(ConverterProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, 326, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(ConvertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(command, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 434, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, mainPanelLayout.createSequentialGroup()
                         .addComponent(JBUtton_SelectSource)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 429, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 290, Short.MAX_VALUE)
                         .addComponent(movie2dngVersionLabel))
-                    .addComponent(CommandLabel, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(keepJP4s, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, mainPanelLayout.createSequentialGroup()
-                        .addComponent(BayerShiftLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(BayerShift, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, mainPanelLayout.createSequentialGroup()
-                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(DestinationLabel)
-                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, mainPanelLayout.createSequentialGroup()
-                                    .addComponent(DifferentFolder)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(SelectDestination)
-                                    .addGap(20, 20, 20)))
-                            .addComponent(SameAsSource)
-                            .addComponent(subfolders))
-                        .addGap(18, 18, 18)
-                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(mainPanelLayout.createSequentialGroup()
-                                .addComponent(FrameLimiterNumber)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(FrameLimiterNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(FrameLimiterAll)
-                            .addComponent(FrameLimiterLabel))
-                        .addGap(112, 112, 112)))
+                    .addComponent(CommandLabel, javax.swing.GroupLayout.Alignment.LEADING))
                 .addContainerGap())
         );
         mainPanelLayout.setVerticalGroup(
@@ -409,36 +445,15 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
                 .addComponent(CommandLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(command, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(keepJP4s)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(BayerShiftLabel)
-                    .addComponent(BayerShift, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(DestinationLabel)
-                    .addComponent(FrameLimiterLabel))
+                .addComponent(TabbedSettingsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 214, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addGap(56, 56, 56)
-                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(DifferentFolder)
-                            .addComponent(SelectDestination)))
-                    .addGroup(mainPanelLayout.createSequentialGroup()
-                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(SameAsSource)
-                            .addComponent(FrameLimiterAll))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(subfolders)
-                            .addComponent(FrameLimiterNumber)
-                            .addComponent(FrameLimiterNumberField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 137, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 94, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(ConvertButton))
+                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(ConverterProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, 25, Short.MAX_VALUE)
+                    .addComponent(ConvertButton, javax.swing.GroupLayout.Alignment.LEADING))
+                .addContainerGap())
         );
 
         menuBar.setName("menuBar"); // NOI18N
@@ -462,46 +477,8 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
 
         menuBar.add(helpMenu);
 
-        statusPanel.setName("statusPanel"); // NOI18N
-
-        statusPanelSeparator.setName("statusPanelSeparator"); // NOI18N
-
-        statusMessageLabel.setName("statusMessageLabel"); // NOI18N
-
-        statusAnimationLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        statusAnimationLabel.setName("statusAnimationLabel"); // NOI18N
-
-        progressBar.setName("progressBar"); // NOI18N
-
-        javax.swing.GroupLayout statusPanelLayout = new javax.swing.GroupLayout(statusPanel);
-        statusPanel.setLayout(statusPanelLayout);
-        statusPanelLayout.setHorizontalGroup(
-            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(statusPanelSeparator, javax.swing.GroupLayout.DEFAULT_SIZE, 597, Short.MAX_VALUE)
-            .addGroup(statusPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(statusMessageLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 411, Short.MAX_VALUE)
-                .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(statusAnimationLabel)
-                .addContainerGap())
-        );
-        statusPanelLayout.setVerticalGroup(
-            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(statusPanelLayout.createSequentialGroup()
-                .addComponent(statusPanelSeparator, javax.swing.GroupLayout.PREFERRED_SIZE, 2, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(statusMessageLabel)
-                    .addComponent(statusAnimationLabel)
-                    .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(3, 3, 3))
-        );
-
         setComponent(mainPanel);
         setMenuBar(menuBar);
-        setStatusBar(statusPanel);
     }// </editor-fold>//GEN-END:initComponents
 
     private void JBUtton_SelectSourceMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_JBUtton_SelectSourceMouseClicked
@@ -531,7 +508,6 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
             FrameLimiterLabel.setEnabled(true);
             FrameLimiterAll.setEnabled(true);
             FrameLimiterNumber.setEnabled(true);
-            FrameLimiterNumberField.setEnabled(true);
 
             UpdateCommand();
         } else {
@@ -590,6 +566,12 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
 
     private void ConvertButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_ConvertButtonMouseClicked
         ConvertButton.setEnabled(false);
+        if (FrameLimiterNumberField.isEnabled() && !FrameLimiterNumberField.getText().equals("")) {
+            ClipFrameCountLimit = Integer.parseInt(FrameLimiterNumberField.getText());
+        }
+        converter_firstline = true;
+        conversion_complete = false;
+
         ConvertProcess = null;
         try {
             ConvertProcess = Runtime.getRuntime().exec(command.getText());
@@ -694,6 +676,25 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
                 while ((line[j] = in.readLine()) != null) {
 
                     // TODO update progress bar
+                    if (converter_firstline) {
+                        ClipFrameCountTotal = Integer.parseInt(line[j]);
+                        converter_firstline = false;
+                    } else {
+                        if (line[j].equals("")) {
+                            conversion_complete = true;
+                        } else {
+                            ClipFrameCountConverted = Integer.parseInt(line[j]);
+                        }
+                    }
+                    int progress = 0;
+                    if (ClipFrameCountLimit != 0) {
+                        progress = (int) (((float) ClipFrameCountConverted / (float) ClipFrameCountLimit) * 100);
+                    } else {
+                        progress = (int) (((float) ClipFrameCountConverted / (float) ClipFrameCountTotal) * 100);
+                    }
+                    ConverterProgressBar.setValue(progress);
+
+                    // Update Log Area
                     LogArea.append(line[j] + "\n\r");
                     LogArea.setCaretPosition(LogArea.getDocument().getLength());
 
@@ -706,20 +707,24 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
                 Logger.getLogger(Movie2DNGUIView.class.getName()).log(Level.SEVERE, null, ex);
             }
             try {
-                Thread.sleep(20); //ms
+                Thread.sleep(20); //milliseconds
             } catch (InterruptedException e) {
                 break;
+            }
+            if (conversion_complete) {
+                Thread.yield();
+                ConvertButton.setEnabled(true);
             }
         }
     }
 
     private void UpdateCommand() {
-        String commandstring = "movie2dng --gui ";
+        String commandstring = "movie2dng --gui --dng ";
         if (keepJP4s.isSelected()) {
             commandstring += "--keep-jp4 "; // Keep JP4s
         }
 
-        commandstring += "--shift=" + BayerShift.getSelectedIndex() + " "; // Bayer Shift
+        //commandstring += "--shift=" + BayerShift.getSelectedIndex() + " "; // Bayer Shift
 
         if (FrameLimiterNumber.isSelected()) {
             commandstring += "--frames " + FrameLimiterNumberField.getText() + " "; // N frame conversion
@@ -749,10 +754,12 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
         command.setText(commandstring);
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel AdvancedSettingsPanel;
     private javax.swing.JComboBox BayerShift;
     private javax.swing.JLabel BayerShiftLabel;
     private javax.swing.JLabel CommandLabel;
     private javax.swing.JButton ConvertButton;
+    private javax.swing.JProgressBar ConverterProgressBar;
     private javax.swing.JLabel DestinationLabel;
     private javax.swing.JRadioButton DifferentFolder;
     private javax.swing.JRadioButton FrameLimiterAll;
@@ -764,6 +771,8 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
     private javax.swing.JTextArea LogArea;
     private javax.swing.JRadioButton SameAsSource;
     private javax.swing.JButton SelectDestination;
+    private javax.swing.JPanel SettingsPanel;
+    private javax.swing.JTabbedPane TabbedSettingsPanel;
     private javax.swing.JTextField command;
     private javax.swing.ButtonGroup destinationbuttongroup;
     private javax.swing.JScrollPane jScrollPane1;
@@ -771,10 +780,6 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
     private javax.swing.JPanel mainPanel;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JLabel movie2dngVersionLabel;
-    private javax.swing.JProgressBar progressBar;
-    private javax.swing.JLabel statusAnimationLabel;
-    private javax.swing.JLabel statusMessageLabel;
-    private javax.swing.JPanel statusPanel;
     private javax.swing.JRadioButton subfolders;
     // End of variables declaration//GEN-END:variables
     private final Timer messageTimer;
@@ -791,4 +796,9 @@ public class Movie2DNGUIView extends FrameView implements Runnable {
     private String movie2dngVersion;
     private Thread ReadConvertProgress;
     private Process ConvertProcess;
+    private int ClipFrameCountTotal;
+    private int ClipFrameCountConverted;
+    private int ClipFrameCountLimit;
+    private boolean converter_firstline;
+    private boolean conversion_complete;
 }
