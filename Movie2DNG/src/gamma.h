@@ -17,19 +17,14 @@
   along with movie2dng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef DNGWRITER_H
-#define DNGWRITER_H 1
+#ifndef GAMMA_H
+#define GAMMA_H 1
 
-#include <string>
-using std::string;
-
-class JP4;
-
-class DNGWriter {
-
+class Gamma {
  public:
-  static void write(const JP4& jp4, const string& dngFilename, int bayerShift = -1);
+
+  static void reverseTable(double gamma, double gamma_scale, double black, unsigned short* rgTable);
 
 };
 
-#endif
+#endif // GAMMA_H

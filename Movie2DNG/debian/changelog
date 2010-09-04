@@ -1,3 +1,19 @@
+movie2dng (0.10) lucid; urgency=low
+
+  * better movie handling with new iterator-like interface.
+  * read/write from/to standard input/output, use filename as '-' to read from stdin and
+    --stdout to output to stdout.
+  * JPEG output, writes deblocked JPEG file (no demosaicing, just gray single-component JPEG for now).
+    Use --jpeg and control quality with --jpeg-quality N, default is 100.
+    EXIF from JP4 is included on the JPEG.
+  * --shift N is back, use it to override bayer shift.
+  * --pgm is back, write 16-bit ASCII PGM, mostly for debug.
+  * Add a PHP script interface to movie2dng. http://server/jp4-proxy.php?url=http://camera_ip:8081/bimg
+    will fetch the given frame from imgsrv, pass it through movie2dng and return a image/jpeg stream
+     that could be used in a HTML page, with <img> tag.
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Fri, 03 Sep 2010 23:29:02 -0300
+
 movie2dng (0.9) lucid; urgency=low
 
   * Fix bug when converting single frames, a empty directory was being created.

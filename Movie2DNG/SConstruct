@@ -74,11 +74,11 @@ jpeg_SRC = Split("jcapimin.c jcapistd.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c
 jpeg_SRC = ["extra/jpeg-6b-jp4/%s" % src for src in jpeg_SRC]
 
 # JP4
-jp4_SRC = ["src/jp4.cpp"] + jpeg_SRC
+jp4_SRC = ["src/jp4.cpp", "src/gamma.cpp"] + jpeg_SRC
 env.StaticLibrary("jp4", source=jp4_SRC)
 
 # movie2dng
-movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp"]
+movie2dng_SRC = ["src/movie2dng.cpp", "src/dngwriter.cpp", "src/movie.cpp"]
 
 movieEnv = env.Clone()
 movieEnv.MergeFlags("-Wall -Wextra -g3")

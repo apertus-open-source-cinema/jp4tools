@@ -34,6 +34,39 @@ static long get_long(unsigned char* d) {
 
 }
 
+JP4::JP4() {}
+
+JP4::~JP4() {
+  if (_data)
+    delete[] _data;
+  if (_raw_app1)
+    delete[] _raw_app1;
+}
+
+const string& JP4::filename() const {
+  return _filename;
+}
+
+unsigned int JP4::width() const {
+  return _width;
+}
+
+unsigned int JP4::height() const {
+  return _height;
+}
+
+unsigned short* JP4::data() const {
+  return _data;
+}
+
+const ElphelMakerNote& JP4::makerNote() const {
+  return _makerNote;
+}
+
+bool JP4::linear() const {
+  return _linear;
+}
+
 void JP4::open(const string& _filename) {
 
   this->_filename = string(_filename);
@@ -43,20 +76,27 @@ void JP4::open(const string& _filename) {
 
   JSAMPARRAY buffer;
 
-  FILE *ifp;
+  FILE *ifp = NULL;
 
-  // EXIF
-  _ed = exif_data_new_from_file(_filename.c_str());
-  readMakerNote();
-	   
   dinfo.err = jpeg_std_error (&jerr);
 
   ifp = fopen(filename().c_str(), "rb");
 
   jpeg_create_decompress (&dinfo);
   jpeg_stdio_src (&dinfo, ifp);
+  // instruct it to save EXIF at APP1 (0xe1) data (up to 64k)
+  jpeg_save_markers(&dinfo, 0xe1, 0xffff);
   jpeg_read_header (&dinfo, TRUE);
+
+  dinfo.do_block_smoothing = FALSE;
   dinfo.out_color_space = JCS_GRAYSCALE;
+
+  // save raw APP1 data (if any)
+  if (dinfo.marker_list) {
+    _raw_app1_length = dinfo.marker_list[0].data_length;
+    _raw_app1 = new unsigned char[_raw_app1_length];
+    memcpy(_raw_app1, dinfo.marker_list[0].data, _raw_app1_length);
+  }
 
   this->_width = dinfo.image_width;
   this->_height = dinfo.image_height;
@@ -74,6 +114,9 @@ void JP4::open(const string& _filename) {
     for (unsigned int column = 0; column < width(); column++)
       temp[line*width() + column] = buffer[0][column];
   }
+
+  // EXIF
+  readMakerNote();
 
   // JP4 deblocking
   // from http://code.google.com/p/gst-plugins-elphel/source/browse/trunk/jp462bayer/src/gstjp462bayer.c
@@ -99,55 +142,13 @@ void JP4::open(const string& _filename) {
 
 }
 
-void JP4::reverseGammaTable(unsigned short* rgtable, unsigned int component) const {
-
-  int i;
-  double x, black256 ,k;
-  int* gtable = new int[257];
-  int ig;
-
-  double gamma       = _makerNote.gamma[component];
-  double gamma_scale = _makerNote.gamma_scale[component];
-  double black       = _makerNote.black[component];
-
-  black256=black*256.0;
-  
-  k = 1.0/(256.0-black256);
-
-  if (gamma < 0.13) gamma=0.13;
-  if (gamma >10.0)  gamma=10.0;
-
-  for (i=0; i<257; i++) {
-    x=k*(i-black256);
-    if (x < 0.0 ) x=0.0;
-    ig= (int) (0.5+65535.0*pow(x,gamma));
-    ig=(ig* (int) gamma_scale)/0x400;
-    if (ig > 0xffff) ig=0xffff;
-    gtable[i]=ig;
-  }
-
-  /** now gtable[] is the same as was used in the camera */
-  /** FPGA was using linear interpolation between elements of the gamma table, so now we'll reverse that process */
-  int indx=0;
-  unsigned short outValue;
-  
-  for (i=0; i<256; i++ ) {
-    outValue=128+(i<<8);
-    
-    while ((gtable[indx+1]<outValue) && (indx<256)) indx++;
-    
-    if (indx>=256)
-      rgtable[i]=(65535.0/256);
-    else if (gtable[indx+1]==gtable[indx])
-      rgtable[i]=i;
-    else
-      rgtable[i]=256.0*(indx+(1.0*(outValue-gtable[indx]))/(gtable[indx+1] - gtable[indx]));
-  }
-
-  delete[] gtable;
-}
-
 void JP4::readMakerNote() {
+
+  if (_raw_app1)
+    _ed = exif_data_new_from_data(_raw_app1, _raw_app1_length);
+
+  if (!_ed)
+    return;
 
   ExifEntry* makerNoteEntry = exif_data_get_entry(_ed, EXIF_TAG_MAKER_NOTE);
 
@@ -247,6 +248,78 @@ void JP4::flipY() {
     }
   }
 
+}
+
+void JP4::writePGM(const string& pgmFilename) const {
+
+  FILE* pgm = fopen(pgmFilename.c_str(), "w");
+  if (!pgm) return;
+
+  fprintf(pgm, "P2\n%d %d\n%d\n", _width, _height, 0xff);
+  for (unsigned int i = 0; i < _height; i++) {
+    for (unsigned int j = 0; j < _width; j++) {
+      fprintf(pgm, "%d ", _data[i*_width + j]);
+    }   
+    fprintf(pgm, "\n");
+  }
+
+  fclose(pgm);
+
+}
+
+void JP4::writeJPEG(const string jpegFilename, unsigned int quality) const {
+
+  struct jpeg_error_mgr jerr;
+  struct jpeg_compress_struct cinfo;
+
+  unsigned int i, j, r, row, col, jj;
+
+  JSAMPARRAY buf;
+  JSAMPARRAY copy;
+
+  FILE *ofp;
+
+  cinfo.err = jpeg_std_error (&jerr);
+
+  ofp = fopen(jpegFilename.c_str(), "wb");
+
+  jpeg_create_compress (&cinfo);
+  jpeg_stdio_dest (&cinfo, ofp);
+
+  cinfo.image_width = _width;
+  cinfo.image_height = _height;
+  cinfo.input_components = 1;
+  cinfo.in_color_space = JCS_GRAYSCALE;
+  jpeg_set_defaults(&cinfo);
+
+  jpeg_set_quality(&cinfo, quality, false);
+
+  jpeg_start_compress (&cinfo, TRUE);
+
+  // write EXIF data (if any)
+  if (_raw_app1) {
+    jpeg_write_marker(&cinfo, 0xe1, _raw_app1, _raw_app1_length);
+  }
+
+  unsigned char* scanline = new unsigned char[_width];
+
+  for (i=0; i < _height; i++) {
+
+    for (j=0; j < _width; j++)
+      scanline[j] = _data[i*_width + j];
+
+    jpeg_write_scanlines (&cinfo, &scanline, 1);
+  }
+
+  jpeg_finish_compress (&cinfo);
+
+  fclose(ofp);
+
+  delete[] scanline;
+}
+
+ExifData* JP4::exifData() const {
+  return _ed;
 }
 
 bool JP4::hasTag(ExifTag tag) const {

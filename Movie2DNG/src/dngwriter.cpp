@@ -43,6 +43,7 @@
 
 #include "dngwriter.h"
 #include "jp4.h"
+#include "gamma.h"
 
 #include <vector>
 using std::vector;
@@ -161,7 +162,7 @@ inline void SET_DNG_TAG_GPS_URATIONAL_ARRAY_3(const JP4& jp4, int TAG, dng_urati
   (*DEST)[2] = dngR3;
 }    
 
-void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
+void DNGWriter::write(const JP4& jp4, const string& dngFilename, int bayerShift) {
 
   // TODO
   unsigned int whitePoint = 0xffff;
@@ -243,7 +244,10 @@ void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
 
   // linearization table (handles gamma, gamma_scale and black level)
   AutoPtr<dng_memory_block> curve(memalloc.Allocate(256*sizeof(unsigned short)));
-  jp4.reverseGammaTable(curve->Buffer_uint16(), 0);
+  Gamma::reverseTable(jp4.makerNote().gamma[0],
+		      jp4.makerNote().gamma_scale[0],
+		      jp4.makerNote().black[0],
+		      curve->Buffer_uint16());
   negative->SetLinearization(curve);
 
   // gain
@@ -283,7 +287,11 @@ void DNGWriter::write(const JP4& jp4, const string& dngFilename) {
   } else if (flip_hor == 1 && flip_ver == 1) {
     negative->SetBayerMosaic(3);
     negative->SetBaseOrientation(dng_orientation::Rotate180());
-  } 
+  }
+
+  // Override bayer shift if asked
+  if (bayerShift != -1)
+    negative->SetBayerMosaic(bayerShift);
 
   // -------------------------------------------------------------------------------
 

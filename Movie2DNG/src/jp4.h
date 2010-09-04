@@ -63,34 +63,30 @@ class JP4 {
 
  public:
 
-  JP4() {}
-
-  ~JP4() {
-     if (_data) delete[] _data;
-   }
+  JP4();
+  ~JP4();
 
   void open(const string& _filename);
 
-  const string& filename() const { return _filename; }
+  const string& filename() const;
 
-  unsigned int width() const { return _width; }
+  unsigned int width() const;
+  unsigned int height() const;
 
-  unsigned int height() const { return _height; }
+  unsigned short* data() const;
 
-  unsigned short* data() const { return _data; }
+  const ElphelMakerNote& makerNote() const;
 
-  const ElphelMakerNote& makerNote() const { return _makerNote; }
+  bool linear() const;
 
-  //
-  // linearization
-  //
-  void reverseGammaTable(unsigned short* rgtable, unsigned int component) const;
+  void writePGM(const string& pgmFilename) const;
+
+  void writeJPEG(const string jpegFilename, unsigned int quality) const;
 
   //
   // image manipulation
   //
   void flipX();
-  
   void flipY();
 
   //
@@ -108,7 +104,7 @@ class JP4 {
 
   ExifEntry* getTagRaw(ExifTag tag) const;
 
-  ExifData* exifData() const { return _ed; }
+  ExifData* exifData() const;
 
  private:
   JP4(const JP4& other); // non-conpyable
@@ -122,6 +118,10 @@ class JP4 {
   unsigned short* _data;
   ElphelMakerNote _makerNote;
 
+  bool _linear;
+
+  unsigned char* _raw_app1;
+  unsigned short _raw_app1_length;
   ExifData* _ed;
 
 };

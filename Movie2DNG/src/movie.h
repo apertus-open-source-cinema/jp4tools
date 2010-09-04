@@ -17,19 +17,54 @@
   along with movie2dng.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef DNGWRITER_H
-#define DNGWRITER_H 1
+#ifndef MOVIE_H
+#define MOVIE_H 1
 
 #include <string>
 using std::string;
 
-class JP4;
+extern "C" {
+#include <libavformat/avformat.h>
+}
 
-class DNGWriter {
+class Movie;
+
+class MovieIterator {
 
  public:
-  static void write(const JP4& jp4, const string& dngFilename, int bayerShift = -1);
+  MovieIterator(Movie* movie, unsigned int start = 0, unsigned int end = 0);
+  virtual ~MovieIterator();
+
+  bool hasNext() const;
+  bool next(unsigned int* frame, void** data, unsigned int* size);
+
+ private:
+  Movie* movie;
+  int start;
+  int end;
+
+  int currentFrame;
+  AVPacket packet;
+};
+
+class Movie {
+
+ public:
+
+  Movie();
+  virtual ~Movie();
+
+  int open(const string& filename);
+
+  unsigned int  nFrames() const;
+  MovieIterator iterator(unsigned int start = -1, unsigned int end = -1);
+
+  friend class MovieIterator;
+
+ private:
+
+  AVFormatContext* ctx;
 
 };
 
-#endif
+#endif // !MOVIE_H
