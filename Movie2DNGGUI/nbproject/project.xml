@@ -13,7 +13,7 @@
             </test-roots>
         </data>
         <swingapp xmlns="http://www.netbeans.org/ns/form-swingapp/1">
-            <application-class name="movie2dngui.Movie2DNGUIApp"/>
+            <application-class name="movie2dnggui.Movie2DNGGUIApp"/>
         </swingapp>
     </configuration>
 </project>
