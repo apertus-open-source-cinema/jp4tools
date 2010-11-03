@@ -50,6 +50,10 @@ env.ParseConfig("pkg-config --cflags --libs-only-L libavformat")
 env.ParseConfig("pkg-config --cflags --libs-only-L libavcodec")
 env.ParseConfig("pkg-config --cflags --libs libexif")
 
+
+# ffmpeg need this on Ubuntu >= 10.10
+env.Append(CPPDEFINES=["-D__STDC_CONSTANT_MACROS"])
+
 # DNG SDK
 dng_SRC  = glob("extra/dng_sdk/*.cpp")
 xmp_SRC  = ["extra/xmp_sdk/common/UnicodeConversions.cpp", "extra/xmp_sdk/common/XML_Node.cpp"]
