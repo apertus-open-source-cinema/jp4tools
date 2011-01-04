@@ -1,3 +1,16 @@
+movie2dng (0.12) maverick; urgency=emergency
+
+  * Fix NULL pointer on maker note reading.
+  * Increment version number.
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Mon, 03 Jan 2011 23:56:52 -0200
+
+movie2dng (0.11) maverick; urgency=low
+
+  * Add maverick support.
+
+ -- Paulo Henrique Silva <ph.silva@gmail.com>  Thu, 30 Dec 2010 15:05:38 -0200
+
 movie2dng (0.10) lucid; urgency=low
 
   * better movie handling with new iterator-like interface.
