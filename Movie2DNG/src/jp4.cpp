@@ -162,6 +162,7 @@ void JP4::readMakerNote() {
     _makerNote.decim_ver = 1;
     _makerNote.bin_hor = 1;
     _makerNote.bin_ver = 1;
+    return;
   }
 
   int makerNoteLength = makerNoteEntry->size/4;
