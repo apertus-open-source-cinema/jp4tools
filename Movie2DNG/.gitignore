@@ -1,0 +1,9 @@
+# Compiled files.
+*.o
+*.a
+movie2dng
+.sconsign.dblite
+
+# Editor temporary files.
+.*.swp
+*.vim
