@@ -22,8 +22,20 @@
 MovieIterator::MovieIterator(Movie* movie, unsigned int start, unsigned int end)
   : movie(movie), start(start), end(end), currentFrame(0)
 {
-  if (start == 0) start = 1;
-  if (end == 0 || end > movie->nFrames()) end = movie->nFrames();
+  packet.destruct = NULL;
+
+  if (this->start == 0) this->start = 1;
+  if (this->end == 0 || this->end > (int) movie->nFrames()) this->end = movie->nFrames();
+
+  // Seek to the start frame.
+  // Note that I would prefer to use av_seek_frame() with AVSEEK_FLAG_FRAME | AVSEEK_FLAG_ANY,
+  // but it does not seem to go well with JP4 files. Moreover it is known to be inaccurate with
+  // many video formats and artifacts may show if we don't seek to a keyframe,
+  // which is acceptable for playback, but not for image rendering.
+  while (++currentFrame < this->start) {
+    av_read_frame(movie->ctx, &packet);
+    av_free_packet(&packet);
+  }
 }
 
 MovieIterator::~MovieIterator() {
@@ -31,22 +43,21 @@ MovieIterator::~MovieIterator() {
 }
 
 bool MovieIterator::hasNext() const {
-  return currentFrame < end;
+  return currentFrame <= end;
 }
 
 bool MovieIterator::next(unsigned int* frame, void** data, unsigned int* size) {
-  if (currentFrame >= end)
+  if (currentFrame > end)
     return false;
 
-  if (currentFrame > 0)
+  if (currentFrame > start)
     av_free_packet(&packet);
 
   int res = av_read_frame(movie->ctx, &packet);
   if (res >= 0) {
-    if (frame) *frame = currentFrame+1;
+    if (frame) *frame = currentFrame++;
     if (data) *data = packet.data;
     if (size) *size = packet.size;
-    currentFrame++;
     return true;
   }
 

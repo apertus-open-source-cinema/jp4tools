@@ -51,7 +51,8 @@ void help(const char* program_name) {
          "[options]\n"
          "\t--stdout           write frame data to stdout (only for single format output and JP4 or JP46 inputs).\n"
          "\t--gui              output information in a format suitable for a GUI program.\n"
-         "\t--frames N         convert only the N-th first frames.\n"
+         "\t--start N          convert from the N-th frame.\n"
+         "\t--frames N         convert only N frames.\n"
          "\t--shift N,         Bayer shift, 0-3 (default: detect from MakerNote).\n"
          "\t--jpeg-quality N   set --jpeg quality factor (1...100), default=100.\n"
          "\t-v, --version      display program version information.\n"
@@ -77,6 +78,7 @@ const char CMD_STDOUT       = -105;
 const char CMD_JPEG         = -106;
 const char CMD_JPEG_QUALITY = -107;
 const char CMD_BAYER_SHIFT  = -108;
+const char CMD_START_FRAME  = -109;
 
 int main (int argc, char** argv) {
 
@@ -89,6 +91,7 @@ int main (int argc, char** argv) {
                                  {"stdout", 0, NULL, CMD_STDOUT},
                                  {"gui", 0, NULL, CMD_GUI},
                                  {"frames", 1, NULL, CMD_N_FRAMES},
+                                 {"start", 1, NULL, CMD_START_FRAME},
                                  {"shift", 1, NULL, CMD_BAYER_SHIFT},
                                  {"jpeg-quality", 1, NULL, CMD_JPEG_QUALITY},
                                  {0, 0, 0, 0}};
@@ -104,6 +107,7 @@ int main (int argc, char** argv) {
 
   bool gui = false;
   long int n_frames = 0;
+  long int start_frame = 0;
   int bayer_shift = -1;
   unsigned int jpeg_quality = 100;
 
@@ -144,6 +148,9 @@ int main (int argc, char** argv) {
       break;
     case CMD_N_FRAMES:
       n_frames = atoi(optarg);
+      break;
+    case CMD_START_FRAME:
+      start_frame = atoi(optarg);
       break;
     case CMD_BAYER_SHIFT:
       bayer_shift = atoi(optarg);
@@ -268,20 +275,26 @@ int main (int argc, char** argv) {
     if (!movie.open(sourceFilename))
       exit(1);
 
-    // number of frames to convert
-    n_frames = n_frames? n_frames: movie.nFrames();
+    if (start_frame && start_frame > movie.nFrames()) {
+      fprintf(stderr, "ERROR: start frame %ld after end frame %u.\n", start_frame, movie.nFrames());
+      exit(1);
+    } else
+      start_frame = std::max((const long int) 1, (const long int) start_frame);
+
+    // number of frames to convert. We silently crop the frame number if it goes above last frame.
+    n_frames = n_frames && start_frame + n_frames <= movie.nFrames() + 1 ? n_frames: movie.nFrames() - start_frame + 1;
 
     if (gui)
       fprintf(stdout, "%ld\n", n_frames);
     else
-      fprintf(stdout, "#frames: %ld\n", n_frames);
+      fprintf(stdout, "#frames: %ld to %ld (%ld of %u frames)\n", start_frame, start_frame + n_frames - 1, n_frames, movie.nFrames());
     fflush(stdout);
 
     unsigned int frame = 0;
     void* frameData = NULL;
     unsigned int frameSize = 0;
 
-    MovieIterator it(&movie, 1, n_frames);
+    MovieIterator it(&movie, start_frame, start_frame + n_frames - 1);
 
     while (it.hasNext()) {
 
