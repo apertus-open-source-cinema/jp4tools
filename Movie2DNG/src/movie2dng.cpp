@@ -53,6 +53,7 @@ void help(const char* program_name) {
          "\t--gui              output information in a format suitable for a GUI program.\n"
          "\t--start N          convert from the N-th frame.\n"
          "\t--frames N         convert only N frames.\n"
+         "\t--count-start N    override the frame numbers so that generated files will count from N instead.\n"
          "\t--shift N,         Bayer shift, 0-3 (default: detect from MakerNote).\n"
          "\t--jpeg-quality N   set --jpeg quality factor (1...100), default=100.\n"
          "\t-v, --version      display program version information.\n"
@@ -79,6 +80,7 @@ const char CMD_JPEG         = -106;
 const char CMD_JPEG_QUALITY = -107;
 const char CMD_BAYER_SHIFT  = -108;
 const char CMD_START_FRAME  = -109;
+const char CMD_COUNT_FRAME  = -110;
 
 int main (int argc, char** argv) {
 
@@ -92,6 +94,7 @@ int main (int argc, char** argv) {
                                  {"gui", 0, NULL, CMD_GUI},
                                  {"frames", 1, NULL, CMD_N_FRAMES},
                                  {"start", 1, NULL, CMD_START_FRAME},
+                                 {"count-start", 1, NULL, CMD_COUNT_FRAME},
                                  {"shift", 1, NULL, CMD_BAYER_SHIFT},
                                  {"jpeg-quality", 1, NULL, CMD_JPEG_QUALITY},
                                  {0, 0, 0, 0}};
@@ -108,6 +111,7 @@ int main (int argc, char** argv) {
   bool gui = false;
   long int n_frames = 0;
   long int start_frame = 0;
+  long int count_frame = -1;
   int bayer_shift = -1;
   unsigned int jpeg_quality = 100;
 
@@ -151,6 +155,9 @@ int main (int argc, char** argv) {
       break;
     case CMD_START_FRAME:
       start_frame = atoi(optarg);
+      break;
+    case CMD_COUNT_FRAME:
+      count_frame = atoi(optarg);
       break;
     case CMD_BAYER_SHIFT:
       bayer_shift = atoi(optarg);
@@ -281,6 +288,8 @@ int main (int argc, char** argv) {
     } else
       start_frame = std::max((const long int) 1, (const long int) start_frame);
 
+    count_frame = count_frame >= 0? count_frame : start_frame;
+
     // number of frames to convert. We silently crop the frame number if it goes above last frame.
     n_frames = n_frames && start_frame + n_frames <= movie.nFrames() + 1 ? n_frames: movie.nFrames() - start_frame + 1;
 
@@ -300,10 +309,10 @@ int main (int argc, char** argv) {
 
       it.next(&frame, &frameData, &frameSize);
 
-      snprintf(jp4Filename, _POSIX_PATH_MAX, jp4FilenameFmt, frame);
-      snprintf(jpegFilename, _POSIX_PATH_MAX, jpegFilenameFmt, frame);
-      snprintf(dngFilename, _POSIX_PATH_MAX, dngFilenameFmt, frame);
-      snprintf(pgmFilename, _POSIX_PATH_MAX, pgmFilenameFmt, frame);
+      snprintf(jp4Filename, _POSIX_PATH_MAX, jp4FilenameFmt, count_frame);
+      snprintf(jpegFilename, _POSIX_PATH_MAX, jpegFilenameFmt, count_frame);
+      snprintf(dngFilename, _POSIX_PATH_MAX, dngFilenameFmt, count_frame);
+      snprintf(pgmFilename, _POSIX_PATH_MAX, pgmFilenameFmt, count_frame);
 
       FILE* fd = fopen(jp4Filename, "w");
       if (fd == NULL) {
@@ -333,11 +342,13 @@ int main (int argc, char** argv) {
 
       if (gui)
         fprintf(stdout, "%d\n", frame);
-      else
+      else if (frame == count_frame)
         fprintf(stdout, "Converting frame %d...\r", frame);
+      else
+        fprintf(stdout, "Converting frame %d, renumbered as %ld...\r", frame, count_frame);
       fflush(stdout);
- 
-      frame++;
+
+      count_frame++;
     }
 
     fprintf(stdout, "\n");
